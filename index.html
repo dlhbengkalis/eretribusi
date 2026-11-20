@@ -580,6 +580,20 @@ body.peran-petugas .fcard .fld{min-width:0}
 .dl-k .mut{font-size:12px;font-weight:400}
 .dl-v{flex:0 0 auto;font-size:14px;white-space:nowrap;text-align:right}
 .dl-v.mrh{color:var(--red)}.dl-v.g{color:#1a7f4b}
+
+/* ----- Petugas gelombang 4 ----- */
+@media screen and (max-width:1000px){
+  body.peran-petugas:not(.hal-home) .sb-bot{display:none!important}
+  body.peran-petugas .tc-h select.lim{font-size:13px!important}
+}
+body.peran-petugas .tc-h h2{font-weight:400}
+body.peran-petugas .tc-h select.lim{font-weight:400;min-height:26px;height:26px;padding:0 22px 0 8px;font-size:12px;border-radius:7px}
+body.peran-petugas .pr-n .ck{width:18px;height:18px;flex:0 0 18px;line-height:18px;text-align:center;border-radius:5px;font-size:12px;margin-top:1px}
+body.peran-petugas .pr-n .ck.ok{background:#1a7f4b;color:#fff}
+body.peran-petugas .pr-n .ck.no{background:#e6ece8;color:#9aa8a0}
+.ppx{position:fixed;top:8px;right:8px;z-index:99999;width:40px;height:40px;border-radius:50%;border:0;background:#0f3d2a;color:#fff;font-size:18px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3);display:none}
+body.printing .ppx{display:block}
+@media print{.ppx{display:none!important}}
 </style>
 
   <style id="pgStyle"></style>
@@ -954,8 +968,8 @@ function modalDaftar(judul, ringkas, items) {
     return '<div class="dl-r"><div class="dl-k">' + x.k + (x.s ? '<div class="mut">' + x.s + '</div>' : '') + '</div>' + (x.v != null ? '<div class="dl-v ' + (x.c || '') + '">' + x.v + '</div>' : '') + '</div>';
   }).join('') : '<div class="empty">Tidak ada data.</div>') + '</div>' + (items.length > maks ? '<p class="note">Menampilkan ' + maks + ' dari ' + items.length + ' data.</p>' : ''));
 }
-function kartuH(ic, label, nilai, cls) {
-  return '<div class="card k h ' + (cls || '') + '"><span class="kic">' + ico(ic) + '</span><div><span class="kl">' + label + '</span><b class="kv2">' + nilai + '</b></div></div>';
+function kartuH(ic, label, nilai, cls, kpi) {
+  return '<div class="card k h ' + (cls || '') + '"' + (kpi && PTG() ? ' data-kpi="' + kpi + '" style="cursor:pointer"' : '') + '><span class="kic">' + ico(ic) + '</span><div><span class="kl">' + label + '</span><b class="kv2">' + nilai + '</b></div></div>';
 }
 /** Menu samping: dapat diciutkan menjadi hanya ikon (pilihan diingat di perangkat). */
 function setSide(min) {
@@ -1026,7 +1040,7 @@ async function keluar() {
 
 /* ================= NAVIGASI ================= */
 function go(p) {
-  S.page = p;
+  S.page = p; document.body.classList.toggle('hal-home', p === 'home');
   ['home', 'objek', 'mou', 'trx', 'piutang', 'referensi', 'publikasi', 'set', 'akun'].forEach(function (x) {
     $('#p' + x.charAt(0).toUpperCase() + x.slice(1)).hidden = x !== p;
   });
@@ -1051,7 +1065,7 @@ async function detailHome(jenis, d) {
   }
   if (!(await muatObjekCepat())) return;
   var aktif = (S.objek || []).filter(function (o) { return o.statusObjek === 'Aktif'; });
-  if (jenis === 'wajib') { modalDaftar('Wajib Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-') }; })); return; }
+  if (jenis === 'wajib') { modalDaftar('Wajib Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-'), v: nf(o.tarifEfektif) }; })); return; }
   var trx = await jalan(function () { return api('api_trxList', S.token, { bulan: '', jenis: '', dari: d.dari, sampai: d.sampai, q: '' }); });
   if (!trx) return;
   if (jenis === 'by') {
@@ -1061,7 +1075,8 @@ async function detailHome(jenis, d) {
   var by = {}; trx.forEach(function (t) { by[t.idObjek] = (by[t.idObjek] || 0) + t.jumlah; });
   var rows = aktif.map(function (o) { var dt = (o.tarifEfektif || 0) * d.nBulan, b = by[o.id] || 0; return { o: o, dt: dt, b: b, p: Math.max(0, dt - b) }; });
   if (jenis === 'dt') {
-    modalDaftar('Ditetapkan', 'Tarif bulanan × ' + d.nBulan + ' bulan · <b>' + rp(d.ditetapkan) + '</b>', rows.map(function (r) { return { k: esc(r.o.nama), s: 'Tarif ' + nf(r.o.tarifEfektif) + ' × ' + d.nBulan, v: nf(r.dt) }; })); return;
+    var rd = rows.filter(function (r) { return r.dt > 0; });
+    modalDaftar('Ditetapkan', nf(rd.length) + ' objek · <b>' + rp(d.ditetapkan) + '</b>', rd.map(function (r) { return { k: esc(r.o.nama), s: 'Ditetapkan ' + nf(r.dt) + ' · Terbayar ' + nf(r.b), v: nf(r.dt) }; })); return;
   }
   rows = rows.filter(function (r) { return r.p > 0; }).sort(function (a, b) { return b.p - a.p; });
   modalDaftar('Piutang', nf(rows.length) + ' objek belum lunas · <b>' + rp(d.piutang) + '</b>', rows.map(function (r) { return { k: esc(r.o.nama), s: 'Ditetapkan ' + nf(r.dt) + ' · Terbayar ' + nf(r.b), v: nf(r.p), c: 'mrh' }; }));
@@ -1125,7 +1140,7 @@ async function pageHome() {
       }).join('') + '</div></div>';
   }
 
-  h += '<div class="ttl" id="hCek">Pembayaran perlu dicek — ' + esc(lb) + ' (' + d.cekTotal + ')</div>';
+  h += '<div class="ttl" id="hCek">Pembayaran perlu dicek' + (ptg ? '' : ' — ' + esc(lb)) + ' (' + d.cekTotal + ')</div>';
   h += d.cek.length ? '<div class="grid">' + d.cek.map(function (t, i) {
     return '<div class="card click" data-cek="' + i + '"><div class="row"><div><div class="nm">' + esc(t.nama) + '</div><div class="id">' + esc(t.id) + ' · ' + esc(t.noBukti) + '</div></div><span class="amt">' + rp(t.jumlah) + '</span></div>' +
       '<div style="margin-top:6px">' + t.alasan.map(function (a) { return '<span class="badge amb" style="margin:0 4px 4px 0;white-space:normal">' + esc(a) + '</span>'; }).join('') + '</div></div>';
@@ -1211,12 +1226,12 @@ function listObjek() {
 }
 function detailObjek(o) {
   var kv = function (k, v) { return '<dt>' + k + '</dt><dd>' + v + '</dd>'; }, nf = function (n) { return new Intl.NumberFormat('id-ID').format(n); };
-  modal('Detail Objek', '<div class="card"><dl class="kv" style="grid-template-columns:max-content 1fr;column-gap:18px">' +
-    kv('ID Objek', esc(o.id)) + kv('Nama Usaha/Kegiatan', '<b>' + esc(o.nama) + '</b>') + kv('Jenis Objek', esc(o.jenis || '-')) +
+  modal('Detail Objek', '<div class="card"><dl class="kv" style="grid-template-columns:112px 1fr;column-gap:14px">' +
+    kv('ID Objek', esc(o.id)) + kv('Nama Usaha', '<b>' + esc(o.nama) + '</b>') + kv('Jenis Objek', esc(o.jenis || '-')) +
     kv('Alamat', esc(o.alamat || '-')) + kv('Kelurahan/Desa', esc(kelPendek(o.kel) || '-')) + kv('Kecamatan', esc(o.kec || '-')) +
-    kv('Status Objek', esc(o.statusObjek || '-')) + kv('Status MOU', esc(o.statusMou || '-')) + kv('Metode', esc(o.metode || '-')) +
+    kv('Status MOU', esc(o.statusMou || '-')) + kv('Metode', esc(o.metode || '-')) +
     kv('Tarif (Rp/bln)', o.tarifEfektif ? nf(o.tarifEfektif) : '-') + kv('Penanggung Jawab', esc(o.pj || '-')) + kv('Jabatan', esc(o.jabatan || '-')) +
-    kv('NIK', esc(o.nik || '-')) + kv('No HP', esc(o.hp || '-')) + kv('Status Penandatanganan', ttdBadge(o)) +
+    kv('NIK', esc(o.nik || '-')) + kv('No HP', esc(o.hp || '-')) +
     '</dl></div>');
 }
 function hapusObjek(o) {
@@ -1711,7 +1726,17 @@ function listTrx() {
   var r = urutkan(S.trx, 'trx', PETA_TRX), nf = function (n) { return new Intl.NumberFormat('id-ID').format(n); };
   var total = r.reduce(function (a, t) { return a + t.jumlah; }, 0);
   $('#tInfo').textContent = infoLim('t', r.length).replace(/^ · /, '');
-  $('#tKpi').innerHTML = kartuH('wallet', 'Total diterima', rp(total), 'tint grn') + kartuH('swap', 'Jumlah transaksi', new Intl.NumberFormat('id-ID').format(r.length), '');
+  $('#tKpi').innerHTML = kartuH('wallet', 'Total diterima', rp(total), 'tint grn', 'tot') + kartuH('swap', 'Jumlah transaksi', new Intl.NumberFormat('id-ID').format(r.length), '', 'jml');
+  $('#tKpi').onclick = function (e) {
+    var kp = e.target.closest('[data-kpi]'); if (!kp) return;
+    var nf2 = function (n) { return new Intl.NumberFormat('id-ID').format(n); }, tt = S.trx || [];
+    if (kp.dataset.kpi === 'jml') modalDaftar('Jumlah Transaksi', nf2(tt.length) + ' transaksi', tt.map(function (t) { return { k: esc(t.nama), s: tglID(t.tanggal), v: nf2(t.jumlah) }; }));
+    else {
+      var g = {}, urut = []; tt.forEach(function (t) { var k = t.idObjek || t.nama; if (!g[k]) { g[k] = { nama: t.nama, n: 0, j: 0 }; urut.push(k); } g[k].n++; g[k].j += t.jumlah; });
+      modalDaftar('Total Diterima', nf2(urut.length) + ' objek · <b>' + rp(tt.reduce(function (a, t) { return a + t.jumlah; }, 0)) + '</b>',
+        urut.map(function (k) { return g[k]; }).sort(function (a, b) { return b.j - a.j; }).map(function (x) { return { k: esc(x.nama), s: x.n + ' transaksi', v: nf2(x.j) }; }));
+    }
+  };
   if (PTG()) {
     $('#tBody').innerHTML = r.length ? r.slice(0, batas('t', r.length)).map(function (t) {
       var ok = t.status === 'Lunas';
@@ -2252,8 +2277,9 @@ function printDoc(html, ukuran, judul, w) {
   try {
     if (!w || w.closed) throw new Error('popup');
     w.document.open();
+    var xb = PTG() ? '<button type="button" onclick="window.close()" aria-label="Tutup" class="ppx">✕</button>' : '';
     w.document.write('<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>' + esc(nama) + '</title><link href="https://fonts.googleapis.com/css2?family=Bevan&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet"><style>' + css +
-      '\nbody{background:#fff!important;margin:0}' + cssHal(ukuran) + '</style></head><body>' + html + '</body></html>');
+      '\nbody{background:#fff!important;margin:0}.ppx{position:fixed;top:8px;right:8px;z-index:99;width:40px;height:40px;border-radius:50%;border:0;background:#0f3d2a;color:#fff;font:700 18px Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3)}@media print{.ppx{display:none!important}}' + cssHal(ukuran) + '</style></head><body>' + xb + html + '</body></html>');
     w.document.close(); w.focus();
     var cetak = function () { try { w.print(); } catch (e) { /* pengguna dapat mencetak manual */ } };
     var sudah = false, mulai = function () { if (sudah) return; sudah = true; cetak(); };
@@ -2263,7 +2289,8 @@ function printDoc(html, ukuran, judul, w) {
   } catch (e) { /* jatuh ke cetak di halaman ini */ }
   if (w && !w.closed) { try { w.close(); } catch (e2) { /* abaikan */ } }
   var judulAsal = document.title; document.title = nama;
-  $('#printArea').innerHTML = html;
+  $('#printArea').innerHTML = (PTG() ? '<button type="button" class="ppx" id="ppxTutup" aria-label="Tutup">✕</button>' : '') + html;
+  if (PTG()) $('#ppxTutup').onclick = function () { document.body.classList.remove('printing'); document.title = judulAsal; };
   $('#pgStyle').textContent = cssHal(ukuran);
   document.body.classList.add('printing');
   var selesai = function () { document.body.classList.remove('printing'); document.title = judulAsal; window.removeEventListener('afterprint', selesai); };
