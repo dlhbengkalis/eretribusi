@@ -564,6 +564,22 @@ body.peran-petugas #rfBody tr.rf-g td.rf-t{flex:0 0 auto;text-align:right!import
 .ss-h span{align-self:center;white-space:nowrap}
 .ss-h div{flex:1;border:1px solid #000;padding:1.5mm 2mm;min-height:9mm;font-style:italic}
 .ss-sg{display:flex;justify-content:space-between;margin:auto 3mm 3mm;font-size:10px;text-align:center}
+
+/* ----- Petugas gelombang 3 ----- */
+body.peran-petugas tr.pr td.pr-r .mut{font-weight:400;margin-top:2px}
+body.peran-petugas #pBody tr.pr b{font-weight:400}
+body.peran-petugas #pBody tr.pr td.mrh,body.peran-petugas #pBody tr.pr td.mrh b{font-weight:400}
+body.peran-petugas .fcard input[type=date]{min-width:0;max-width:100%;width:100%;padding:8px 6px;-webkit-appearance:none;appearance:none;display:block;text-align:left}
+body.peran-petugas .fcard input[type=date]::-webkit-date-and-time-value{text-align:left;min-width:0}
+body.peran-petugas .fcard{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.peran-petugas .fcard .fld{min-width:0}
+.card.k[data-kpi]:active{background:#f1f8f4}
+.dl-sum{font-size:13px;color:var(--mut2);margin:0 0 8px}
+.dl-r{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.dl-k{flex:1 1 auto;min-width:0;font-size:14px;font-weight:500;overflow-wrap:anywhere}
+.dl-k .mut{font-size:12px;font-weight:400}
+.dl-v{flex:0 0 auto;font-size:14px;white-space:nowrap;text-align:right}
+.dl-v.mrh{color:var(--red)}.dl-v.g{color:#1a7f4b}
 </style>
 
   <style id="pgStyle"></style>
@@ -928,8 +944,15 @@ function fcari(id, ph) { return fld('Pencarian', '<div class="srch">' + ico('sea
 function selKec(id) { return S.ref.kecamatan.length > 1 ? fld('Kecamatan', '<select id="' + id + '"><option value="">Semua kecamatan</option>' + S.ref.kecamatan.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('') + '</select>') : ''; }
 function limSel(k) { return '<select class="lim" id="' + k + 'Lim" aria-label="Jumlah data">' + OPSI_LIM + '</select>'; }
 function selLim(k) { return fld('Jumlah data', '<select class="lim" id="' + k + 'Lim" aria-label="Jumlah data">' + OPSI_LIM + '</select>'); }
-function kartuK(ic, label, nilai, sub, cls, id) {
-  return '<div class="card k ' + (cls || '') + '"' + (id ? ' data-go="' + id + '" style="cursor:pointer"' : '') + '><div class="kh"><span class="kic">' + ico(ic) + '</span><span class="kl">' + label + '</span></div><b class="kv2">' + nilai + '</b><span class="ks">' + (sub || '&nbsp;') + '</span></div>';
+function kartuK(ic, label, nilai, sub, cls, id, kpi) {
+  return '<div class="card k ' + (cls || '') + '"' + (id ? ' data-go="' + id + '" style="cursor:pointer"' : '') + (kpi && PTG() ? ' data-kpi="' + kpi + '" style="cursor:pointer"' : '') + '><div class="kh"><span class="kic">' + ico(ic) + '</span><span class="kl">' + label + '</span></div><b class="kv2">' + nilai + '</b><span class="ks">' + (sub || '&nbsp;') + '</span></div>';
+}
+/** Modal daftar ringkas: items = [{k: kiri, s: sub, v: kanan, c: kelas}] */
+function modalDaftar(judul, ringkas, items) {
+  var maks = 500, tampil = items.slice(0, maks);
+  modal(judul, (ringkas ? '<div class="dl-sum">' + ringkas + '</div>' : '') + '<div class="dl">' + (tampil.length ? tampil.map(function (x) {
+    return '<div class="dl-r"><div class="dl-k">' + x.k + (x.s ? '<div class="mut">' + x.s + '</div>' : '') + '</div>' + (x.v != null ? '<div class="dl-v ' + (x.c || '') + '">' + x.v + '</div>' : '') + '</div>';
+  }).join('') : '<div class="empty">Tidak ada data.</div>') + '</div>' + (items.length > maks ? '<p class="note">Menampilkan ' + maks + ' dari ' + items.length + ' data.</p>' : ''));
 }
 function kartuH(ic, label, nilai, cls) {
   return '<div class="card k h ' + (cls || '') + '"><span class="kic">' + ico(ic) + '</span><div><span class="kl">' + label + '</span><b class="kv2">' + nilai + '</b></div></div>';
@@ -1018,6 +1041,31 @@ var BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt',
 var BLN_PJG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 var signed = function (n) { return (n > 0 ? '+' : '') + new Intl.NumberFormat('id-ID').format(n); };
 var persen = function (a, b) { return b ? Math.min(100, Math.round(a / b * 1000) / 10) : 0; };
+async function detailHome(jenis, d) {
+  var nf = function (n) { return new Intl.NumberFormat('id-ID').format(Number(n) || 0); };
+  if (jenis === 'real') {
+    modalDaftar('Realisasi Pembayaran', '', [
+      { k: 'Periode', v: esc(d.dari ? tglID(d.dari) + ' s.d. ' + tglID(d.sampai) : '') }, { k: 'Ditetapkan', v: rp(d.ditetapkan) }, { k: 'Terbayar', v: rp(d.terbayar), c: 'g' },
+      { k: 'Piutang', v: rp(d.piutang), c: 'mrh' }, { k: 'Realisasi', v: '<b>' + String(d.realisasi).replace('.', ',') + '%</b>' }]);
+    return;
+  }
+  if (!(await muatObjekCepat())) return;
+  var aktif = (S.objek || []).filter(function (o) { return o.statusObjek === 'Aktif'; });
+  if (jenis === 'wajib') { modalDaftar('Wajib Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-') }; })); return; }
+  var trx = await jalan(function () { return api('api_trxList', S.token, { bulan: '', jenis: '', dari: d.dari, sampai: d.sampai, q: '' }); });
+  if (!trx) return;
+  if (jenis === 'by') {
+    modalDaftar('Terbayar', 'Periode ' + esc(tglID(d.dari)) + ' s.d. ' + esc(tglID(d.sampai)) + ' · ' + nf(trx.length) + ' transaksi · <b>' + rp(d.terbayar) + '</b>',
+      trx.map(function (t) { return { k: esc(t.nama), s: tglID(t.tanggal), v: nf(t.jumlah) }; })); return;
+  }
+  var by = {}; trx.forEach(function (t) { by[t.idObjek] = (by[t.idObjek] || 0) + t.jumlah; });
+  var rows = aktif.map(function (o) { var dt = (o.tarifEfektif || 0) * d.nBulan, b = by[o.id] || 0; return { o: o, dt: dt, b: b, p: Math.max(0, dt - b) }; });
+  if (jenis === 'dt') {
+    modalDaftar('Ditetapkan', 'Tarif bulanan × ' + d.nBulan + ' bulan · <b>' + rp(d.ditetapkan) + '</b>', rows.map(function (r) { return { k: esc(r.o.nama), s: 'Tarif ' + nf(r.o.tarifEfektif) + ' × ' + d.nBulan, v: nf(r.dt) }; })); return;
+  }
+  rows = rows.filter(function (r) { return r.p > 0; }).sort(function (a, b) { return b.p - a.p; });
+  modalDaftar('Piutang', nf(rows.length) + ' objek belum lunas · <b>' + rp(d.piutang) + '</b>', rows.map(function (r) { return { k: esc(r.o.nama), s: 'Ditetapkan ' + nf(r.dt) + ' · Terbayar ' + nf(r.b), v: nf(r.p), c: 'mrh' }; }));
+}
 async function pageHome() {
   var host = $('#pHome');
   var ptg = PTG();
@@ -1043,12 +1091,12 @@ async function pageHome() {
   var lb = d.dari ? 'Periode ' + tglID(d.dari) + ' s.d. ' + tglID(d.sampai) : (d.bulan ? 'Bulan ' + BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun);
   var lbS = d.dari ? tglID(d.dari) + ' s.d. ' + tglID(d.sampai) : (d.bulan ? BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun);
   var nfx = function (n) { return new Intl.NumberFormat('id-ID').format(Number(n) || 0); };
-  var kReal = '<div class="card k"><div class="kh"><span class="kic">' + ico('chart') + '</span><span class="kl">Realisasi pembayaran</span></div><b class="kv2">' + d.realisasi.toString().replace('.', ',') + '%</b><div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div></div>';
+  var kReal = '<div class="card k"' + (ptg ? ' data-kpi="real" style="cursor:pointer"' : '') + '><div class="kh"><span class="kic">' + ico('chart') + '</span><span class="kl">Realisasi pembayaran</span></div><b class="kv2">' + d.realisasi.toString().replace('.', ',') + '%</b><div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div></div>';
   var h = ptg ? '<div class="kpi kpi1">' +
-    kartuK('users', 'Wajib retribusi', nfx(d.wajib), nfx(d.wajib) + ' objek aktif') +
-    kartuK('wallet', 'Ditetapkan', rp(d.ditetapkan), 'Tarif bulanan × ' + d.nBulan + ' bulan') +
-    kartuK('check', 'Terbayar', rp(d.terbayar), '', 'grn') +
-    kartuK('piutang', 'Piutang', rp(d.piutang), nfx(d.piutangObjek) + ' objek belum lunas', d.piutang ? 'red' : '') +
+    kartuK('users', 'Wajib retribusi', nfx(d.wajib), nfx(d.wajib) + ' objek aktif', '', '', 'wajib') +
+    kartuK('wallet', 'Ditetapkan', rp(d.ditetapkan), 'Tarif bulanan × ' + d.nBulan + ' bulan', '', '', 'dt') +
+    kartuK('check', 'Terbayar', rp(d.terbayar), '', 'grn', '', 'by') +
+    kartuK('piutang', 'Piutang', rp(d.piutang), nfx(d.piutangObjek) + ' objek belum lunas', d.piutang ? 'red' : '', '', 'pi') +
     kReal + '</div>' : '<div class="kpi">' +
     kartuK('users', 'Wajib retribusi', nfx(d.wajib), nfx(d.wajib) + ' objek aktif') +
     kartuK('doc', 'Wajib retribusi MOU', nfx(d.mou), nfx(d.mouTtd) + ' sudah ditandatangani') +
@@ -1087,6 +1135,7 @@ async function pageHome() {
 
   $('#hBody').innerHTML = h;
   $('#hBody').onclick = async function (e) {
+    var kp = e.target.closest('[data-kpi]'); if (kp) { detailHome(kp.dataset.kpi, d); return; }
     var g = e.target.closest('[data-go]'); if (g) { var el = $('#' + g.dataset.go); if (el) el.scrollIntoView({ behavior: 'smooth' }); return; }
     var c = e.target.closest('[data-cek]'); if (c) { detailTrx(S.cek[Number(c.dataset.cek)]); return; }
     var p = e.target.closest('[data-piut]'); if (p) {
@@ -1142,7 +1191,7 @@ function listObjek() {
   var rows = filterObjek(), lim = batas('o', rows.length), nf = function (n) { return new Intl.NumberFormat('id-ID').format(n); };
   if (PTG()) {
     $('#oBody').innerHTML = rows.length ? rows.slice(0, lim).map(function (o) {
-      return '<tr class="pr" data-id="' + esc(o.id) + '"><td class="pr-l"><b>' + esc(o.nama) + '</b><div class="mut">' + esc(o.alamat || '-') + '</div></td></tr>';
+      return '<tr class="pr" data-id="' + esc(o.id) + '"><td class="pr-l"><b>' + esc(o.nama) + '</b><div class="mut">' + esc([o.alamat || '-', kelPendek(o.kel)].filter(Boolean).join(' • ')) + '</div></td></tr>';
     }).join('') : '<tr><td class="empty">Belum ada objek yang cocok.</td></tr>';
     return;
   }
@@ -1614,7 +1663,7 @@ async function formMou(m) {
 async function pageTrx() {
   var host = $('#pTrx');
   if (!$('#tAdd')) {
-    host.innerHTML = kepala('Transaksi Retribusi', '<button class="btn primary" id="tAdd">' + ico('plus') + 'Tambah Transaksi</button>') +
+    host.innerHTML = kepala('Transaksi Retribusi', '<button class="btn primary" id="tAdd">' + ico('plus') + (PTG() ? 'Tambah' : 'Tambah Transaksi') + '</button>') +
       '<div class="fcard">' + fcari('tQ', 'Cari nama, no. bukti, atau kelurahan/desa') +
       (PTG() ? fld('Dari tanggal', '<input type="date" id="tDari" aria-label="Dari tanggal">') + fld('Sampai tanggal', '<input type="date" id="tSampai" aria-label="Sampai tanggal">') :
         fld('Periode', '<select id="tBulan" aria-label="Bulan"><option value="">Semua bulan</option>' + S.ref.periode.map(function (p) { return '<option value="' + p.v + '">' + esc(p.t) + '</option>'; }).join('') + '</select>') +
@@ -1666,8 +1715,8 @@ function listTrx() {
   if (PTG()) {
     $('#tBody').innerHTML = r.length ? r.slice(0, batas('t', r.length)).map(function (t) {
       var ok = t.status === 'Lunas';
-      return '<tr class="pr" data-det="' + esc(t.id) + '"><td class="pr-l"><div class="pr-n"><span class="ck ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span><b>' + esc(t.nama) + '</b></div>' +
-        '<div class="mut">' + tglID(t.tanggal) + ' · ' + esc(periodeLabel(t.periode)) + '</div></td><td class="pr-r"><b>' + nf(t.jumlah) + '</b></td></tr>';
+      return '<tr class="pr" data-det="' + esc(t.id) + '"><td class="pr-l"><div class="pr-n"><span class="ck ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span><b>' + esc(t.nama) + '</b></div></td>' +
+        '<td class="pr-r"><b>' + nf(t.jumlah) + '</b><div class="mut">' + tglID(t.tanggal) + '</div></td></tr>';
     }).join('') : '<tr><td class="empty">Belum ada transaksi pada filter ini.</td></tr>';
     return;
   }
@@ -1998,6 +2047,15 @@ async function pagePiutang() {
     ['pQ', 'pJenis', 'pKel'].forEach(function (i) { if (!$('#' + i)) return; $('#' + i).oninput = resetPiutang; $('#' + i).onchange = resetPiutang; });
     if ($('#pKec')) $('#pKec').onchange = resetPiutang;
     $('#pCetak').onclick = cetakPiutang;
+    $('#pKpi').onclick = function (e) {
+      var kp = e.target.closest('[data-kpi]'); if (!kp || !S.piutang) return;
+      var j = kp.dataset.kpi, rr = filterPiutang(), nf = function (n) { return new Intl.NumberFormat('id-ID').format(n); }, per = labelPiutang();
+      var tot = function (k) { return rr.reduce(function (a, r) { return a + r[k]; }, 0); };
+      if (j === 'ob') modalDaftar('Objek Berpiutang', esc(per) + ' · ' + nf(rr.length) + ' objek', rr.map(function (r) { return { k: esc(r.nama), s: esc(r.alamat || '-'), v: nf(r.piutang), c: 'mrh' }; }));
+      else if (j === 'dt') modalDaftar('Ditetapkan', esc(per) + ' · <b>' + rp(tot('ditetapkan')) + '</b>', rr.map(function (r) { return { k: esc(r.nama), s: 'Tarif ' + nf(r.tarif) + '/bln', v: nf(r.ditetapkan) }; }));
+      else if (j === 'by') { var b = rr.filter(function (r) { return r.terbayar > 0; }); modalDaftar('Terbayar', esc(per) + ' · ' + nf(b.length) + ' objek · <b>' + rp(tot('terbayar')) + '</b>', b.map(function (r) { return { k: esc(r.nama), s: esc(r.alamat || '-'), v: nf(r.terbayar) }; })); }
+      else modalDaftar('Total Piutang', esc(per) + ' · <b>' + rp(tot('piutang')) + '</b>', rr.slice().sort(function (a, b) { return b.piutang - a.piutang; }).map(function (r) { return { k: esc(r.nama), s: esc(ketPiutang(r)), v: nf(r.piutang), c: 'mrh' }; }));
+    };
     pasangLim('p', listPiutang);
     $('#pBody').onclick = async function (e) {
       var n = e.target.closest('[data-pt]');
@@ -2034,10 +2092,10 @@ function listPiutang() {
   var rows = filterPiutang(), d = S.piutang, lim = batas('p', rows.length), nf = function (n) { return new Intl.NumberFormat('id-ID').format(n); };
   var sum = function (k) { return rows.reduce(function (a, r) { return a + r[k]; }, 0); };
   var per = d.bulan ? BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun;
-  $('#pKpi').innerHTML = kartuK('users', 'Objek berpiutang', nf(rows.length), 'Dari ' + nf(d.rows.length) + ' objek') +
-    kartuK('wallet', 'Ditetapkan', rp(sum('ditetapkan')), esc(per)) +
-    kartuK('check', 'Terbayar', rp(sum('terbayar')), '', 'grn') +
-    kartuK('piutang', 'Total piutang', rp(sum('piutang')), '', 'red');
+  $('#pKpi').innerHTML = kartuK('users', 'Objek berpiutang', nf(rows.length), 'Dari ' + nf(d.rows.length) + ' objek', '', '', 'ob') +
+    kartuK('wallet', 'Ditetapkan', rp(sum('ditetapkan')), esc(per), '', '', 'dt') +
+    kartuK('check', 'Terbayar', rp(sum('terbayar')), '', 'grn', '', 'by') +
+    kartuK('piutang', 'Total piutang', rp(sum('piutang')), '', 'red', '', 'pi');
   if (PTG()) {
     $('#pBody').innerHTML = rows.length ? rows.slice(0, lim).map(function (r) {
       return '<tr class="pr" data-pt="' + esc(r.id) + '"><td class="pr-l"><b>' + esc(r.nama) + '</b></td><td class="pr-r mrh"><b>' + nf(r.piutang) + '</b></td></tr>';
@@ -2339,7 +2397,7 @@ function listReferensi() {
     var awal = x.objek !== prev; prev = x.objek;
     if (ptg) {   // Petugas: judul = objek retribusi; baris 1 = golongan; baris 2 = tarif
       return (awal ? '<tr class="rf-h"><td colspan="3" class="rf-o">' + esc(x.objek) + '</td></tr>' : '') +
-        '<tr class="rf-g"><td class="rf-e"></td><td data-l="Golongan" class="rf-gl">' + esc(x.golongan) + '</td><td data-l="Tarif" class="nw rf-t">Rp ' + nfRef(x.tarif) + ' <span class="mut">/ ' + esc(x.satuan) + '</span></td></tr>';
+        '<tr class="rf-g"><td class="rf-e"></td><td data-l="Golongan" class="rf-gl">' + esc(x.golongan) + '</td><td data-l="Tarif" class="nw rf-t">Rp ' + nfRef(x.tarif) + ' <span class="mut">/ ' + esc(ptg ? String(x.satuan).replace(/^bulan$/i, 'bln') : x.satuan) + '</span></td></tr>';
     }
     return '<tr' + (awal ? ' class="rf-b"' : '') + '><td data-l="Objek Retribusi" class="rf-o">' + (awal ? esc(x.objek) : '') + '</td><td data-l="Golongan">' + esc(x.golongan) + '</td>' +
       '<td data-l="Tarif" class="r nw">Rp ' + nfRef(x.tarif) + ' <span class="mut">/ ' + esc(x.satuan) + '</span></td></tr>';
