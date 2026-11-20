@@ -964,7 +964,7 @@ function kartuK(ic, label, nilai, sub, cls, id, kpi) {
 /** Modal daftar ringkas: items = [{k: kiri, s: sub, v: kanan, c: kelas}] */
 function modalDaftar(judul, ringkas, items) {
   var maks = 500, tampil = items.slice(0, maks);
-  modal(judul, (ringkas ? '<div class="dl-sum">' + ringkas + '</div>' : '') + '<div class="dl">' + (tampil.length ? tampil.map(function (x) {
+  modal(judul, (ringkas ? '<div class="dl-sum">' + ringkas + '</div>' : '') + '<div class="dl card" style="background:#fff;padding:4px 14px">' + (tampil.length ? tampil.map(function (x) {
     return '<div class="dl-r"><div class="dl-k">' + x.k + (x.s ? '<div class="mut">' + x.s + '</div>' : '') + '</div>' + (x.v != null ? '<div class="dl-v ' + (x.c || '') + '">' + x.v + '</div>' : '') + '</div>';
   }).join('') : '<div class="empty">Tidak ada data.</div>') + '</div>' + (items.length > maks ? '<p class="note">Menampilkan ' + maks + ' dari ' + items.length + ' data.</p>' : ''));
 }
@@ -1065,7 +1065,7 @@ async function detailHome(jenis, d) {
   }
   if (!(await muatObjekCepat())) return;
   var aktif = (S.objek || []).filter(function (o) { return o.statusObjek === 'Aktif'; });
-  if (jenis === 'wajib') { modalDaftar('Wajib Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-'), v: nf(o.tarifEfektif) }; })); return; }
+  if (jenis === 'wajib') { modalDaftar('Wajib Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-'), }; })); return; }
   var trx = await jalan(function () { return api('api_trxList', S.token, { bulan: '', jenis: '', dari: d.dari, sampai: d.sampai, q: '' }); });
   if (!trx) return;
   if (jenis === 'by') {
@@ -1787,11 +1787,11 @@ function detailTrx(t) {
     kv('Diinput oleh', esc(t.oleh) + '<br><span class="mut">' + esc(t.waktu) + '</span>') +
     kv('Validasi', t.verif === 'Sudah Dicek' ? 'Sudah divalidasi<br><span class="mut">oleh ' + esc(t.verifOleh) + ' · ' + esc(t.verifWaktu) + '</span>' : 'Belum divalidasi') +
     '</dl></div><div id="dFoto" style="margin-top:10px"></div>' +
-    '<button class="btn block" id="dBtnKw">🖨 Cetak Kwitansi</button>' +
+    (PTG() ? '' : '<button class="btn block" id="dBtnKw">🖨 Cetak Kwitansi</button>') +
     (t.adaFoto ? '<button class="btn block" id="dBtnFoto">Lihat Foto Bukti</button>' : '') +
     (admin && belumCek ? '<button class="btn primary block" id="dBtnVer">✔ Validasi Transaksi</button>' : ''));
   var shDet = $('#ov .sheet'); if (shDet) shDet.style.maxWidth = '780px';
-  $('#dBtnKw').onclick = function () { cetakKwitansi(t); };
+  if ($('#dBtnKw')) $('#dBtnKw').onclick = function () { cetakKwitansi(t); };
   var b = $('#dBtnFoto');
   if (b) b.onclick = async function () {
     var u = await jalan(function () { return api('api_trxFoto', S.token, t.id); });
@@ -2409,7 +2409,7 @@ async function pageReferensi() {
     host.innerHTML = kepala('Referensi') +
       '<div class="note" style="margin:0 0 12px">Tarif pelayanan kebersihan sesuai Perda. Data ini hanya untuk dibaca sebagai acuan' + (PTG() ? '' : '; verifikasi dengan salinan resmi Perda sebelum dipakai untuk penetapan.') + '</div>' +
       '<div class="fcard">' + fcari('rfQ', 'Cari objek retribusi, golongan, atau tarif') + '</div>' +
-      '<div class="tcard"><div class="tc-h"><h2>Tarif Pelayanan Kebersihan</h2><div class="ci r" id="rfInfo"></div></div><div class="tw"><table class="t tfull"><thead><tr><th>Objek Retribusi</th><th>Golongan</th><th class="c">Tarif</th></tr></thead><tbody id="rfBody"></tbody></table></div></div>';
+      '<div class="tcard"><div class="tc-h"' + (PTG() ? ' hidden style="display:none"' : '') + '><h2>Tarif Pelayanan Kebersihan</h2><div class="ci r" id="rfInfo"></div></div><div class="tw"><table class="t tfull"><thead><tr><th>Objek Retribusi</th><th>Golongan</th><th class="c">Tarif</th></tr></thead><tbody id="rfBody"></tbody></table></div></div>';
     $('#rfQ').oninput = listReferensi;
   }
   if (!S.tarifRef) { var r = await jalan(function () { return api('api_tarifRefList', S.token); }); if (!r) return; S.tarifRef = r; }
