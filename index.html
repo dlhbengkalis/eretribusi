@@ -482,6 +482,28 @@ a.dl .si{width:16px;height:16px}
 #rfBody td.rf-o{font-weight:700;color:#0f3d2a;width:34%}
 #rfBody tr.rf-b td{border-top:2px solid #d5e6dc}
 #rfBody tr.rf-b:first-child td{border-top:0}
+/* ===== Tampilan Petugas Retribusi ===== */
+.ph-ptg{font-weight:800;font-size:15px;color:var(--ttl);margin-top:6px}
+.kpi.kpi1{grid-template-columns:1fr!important}
+.lnk{color:var(--g);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+body.peran-petugas .urutm{display:none!important}
+body.peran-petugas .sheet-h .ghost{width:38px;height:38px;border-radius:50%;background:#e3ece6;color:#0f3d2a;font-size:18px;padding:0;display:grid;place-items:center;border:0}
+body.peran-petugas #pTrx th.srt,body.peran-petugas #pPiutang th.srt{pointer-events:none;cursor:default}
+body.peran-petugas #rfBody tr.rf-h td{font-weight:800;color:var(--ttl);background:#eef5f0;border-top:2px solid #d5e6dc}
+body.peran-petugas #rfBody td.rf-t{font-weight:700;color:var(--g)}
+@media(max-width:1000px){
+  body.peran-petugas table.tfull td[data-l="No"]{display:none}
+  body.peran-petugas table.tfull td[data-l="Nama Usaha/Kegiatan"]{display:block;text-align:left!important;font-size:15px}
+  body.peran-petugas table.tfull td[data-l="Nama Usaha/Kegiatan"]::before{display:none}
+  body.peran-petugas #rfBody td::before{display:none}
+  body.peran-petugas #rfBody td{display:block;text-align:left!important}
+  body.peran-petugas #rfBody td.rf-e{display:none}
+  body.peran-petugas #rfBody td.rf-o{width:100%}
+  body.peran-petugas #pTrx table.tfull tr,body.peran-petugas #pPiutang table.tfull tr,body.peran-petugas #pObjek table.tfull tr{display:flex;flex-direction:column}
+  body.peran-petugas table.tfull td[data-l="Nama Usaha/Kegiatan"]{order:-1}
+  body.peran-petugas #rfBody tr.rf-h{border-bottom:0;padding-bottom:0}
+  body.peran-petugas #rfBody tr.rf-g{border-bottom:1px solid var(--line);padding-top:4px;padding-bottom:6px}
+}
 </style>
 
   <style id="pgStyle"></style>
@@ -832,6 +854,8 @@ var IKON = {
 };
 function ico(n) { return '<svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKON[n] + '</svg>'; }
 function subHal() { var l = S.user.label, m = l.match(/^(.*?)\s*\((.*)\)\s*$/); return m ? m[1] + ' · ' + m[2] : l; }
+function PTG() { return !!(S.user && S.user.role === 'PETUGAS'); }
+function kepalaPtg(judul) { return '<div class="ph"><div><h1>' + judul + '</h1><div class="ph-s ph-ptg">Petugas Retribusi : ' + esc(subHal()) + '</div></div></div>'; }
 function kepala(judul, aksi) { return '<div class="ph"><div><h1>' + judul + '</h1><div class="ph-s">' + esc(subHal()) + '</div></div><div class="ph-a">' + (aksi || '') + '</div></div>'; }
 function fld(label, inner, cls) { return '<div class="fld' + (cls ? ' ' + cls : '') + '"><label>' + label + '</label>' + inner + '</div>'; }
 function fcari(id, ph) { return fld('Pencarian', '<div class="srch">' + ico('search') + '<input id="' + id + '" type="search" placeholder="' + ph + '"></div>', 'fs'); }
@@ -930,20 +954,36 @@ var signed = function (n) { return (n > 0 ? '+' : '') + new Intl.NumberFormat('i
 var persen = function (a, b) { return b ? Math.min(100, Math.round(a / b * 1000) / 10) : 0; };
 async function pageHome() {
   var host = $('#pHome');
-  if (!$('#hTahun')) {
+  var ptg = PTG();
+  if (ptg) {
+    if (!$('#hDari')) {
+      host.innerHTML = kepalaPtg('Ringkasan Retribusi') + '<div class="fcard">' + fld('Dari tanggal', '<input type="date" id="hDari">') + fld('Sampai tanggal', '<input type="date" id="hSampai">') + '</div><div id="hBody"></div>';
+      $('#hDari').value = S.ref.hariIni.slice(0, 8) + '01'; $('#hSampai').value = S.ref.hariIni;
+      $('#hDari').onchange = pageHome; $('#hSampai').onchange = pageHome;
+    }
+  } else if (!$('#hTahun')) {
     host.innerHTML = kepala('Ringkasan Retribusi', fld('Tahun', '<select id="hTahun">' + S.ref.tahunList.map(function (y) { return '<option>' + y + '</option>'; }).join('') + '</select>') +
       fld('Bulan', '<select id="hBulan"><option value="0">Semua bulan (setahun)</option>' + BLN_PJG.map(function (b, i) { return '<option value="' + (i + 1) + '">' + b + '</option>'; }).join('') + '</select>')) + '<div id="hBody"></div>';
     $('#hBulan').value = String(Number(S.ref.periodeIni.slice(5)));
     $('#hTahun').onchange = pageHome; $('#hBulan').onchange = pageHome;
   }
-  var hT = $('#hTahun').value, hB = Number($('#hBulan').value);
-  var d = await ambilSWR('home|' + hT + '|' + hB, function () { return api('api_dashboard', S.token, hT, hB); }, pageHome, 'home');
+  var hT = ptg ? '' : $('#hTahun').value, hB = ptg ? 0 : Number($('#hBulan').value), hD = ptg ? $('#hDari').value : '', hS = ptg ? $('#hSampai').value : '';
+  if (ptg && (!hD || !hS)) return;
+  if (ptg && hD > hS) { toast('Tanggal awal tidak boleh melebihi tanggal akhir.', true); return; }
+  var d = await ambilSWR('home|' + hT + '|' + hB + '|' + hD + '|' + hS, function () { return ptg ? api('api_dashboard', S.token, '', 0, hD, hS) : api('api_dashboard', S.token, hT, hB); }, pageHome, 'home');
   if (!d) return;
   S.cek = d.cek; S.piut = d.piutangTop;
   S.homePer = d.bulan ? d.tahun + '-' + String(d.bulan).padStart(2, '0') : null;
-  var lb = d.bulan ? 'Bulan ' + BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun;
+  var lb = d.dari ? 'Periode ' + tglID(d.dari) + ' s.d. ' + tglID(d.sampai) : (d.bulan ? 'Bulan ' + BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun);
+  var lbS = d.dari ? tglID(d.dari) + ' s.d. ' + tglID(d.sampai) : (d.bulan ? BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun);
   var nfx = function (n) { return new Intl.NumberFormat('id-ID').format(Number(n) || 0); };
-  var h = '<div class="kpi">' +
+  var kReal = '<div class="card k"><div class="kh"><span class="kic">' + ico('chart') + '</span><span class="kl">Realisasi pembayaran</span></div><b class="kv2">' + d.realisasi.toString().replace('.', ',') + '%</b><div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div></div>';
+  var h = ptg ? '<div class="kpi kpi1">' +
+    kartuK('users', 'Wajib retribusi', nfx(d.wajib), nfx(d.wajib) + ' objek aktif') +
+    kartuK('wallet', 'Ditetapkan', rp(d.ditetapkan), 'Tarif bulanan × ' + d.nBulan + ' bulan') +
+    kartuK('check', 'Terbayar', rp(d.terbayar), '', 'grn') +
+    kartuK('piutang', 'Piutang', rp(d.piutang), nfx(d.piutangObjek) + ' objek belum lunas', d.piutang ? 'red' : '') +
+    kReal + '</div>' : '<div class="kpi">' +
     kartuK('users', 'Wajib retribusi', nfx(d.wajib), nfx(d.wajib) + ' objek aktif') +
     kartuK('doc', 'Wajib retribusi MOU', nfx(d.mou), nfx(d.mouTtd) + ' sudah ditandatangani') +
     kartuK('pin', 'Wajib retribusi non-MOU', nfx(d.nonMou), '') +
@@ -953,7 +993,7 @@ async function pageHome() {
     kartuK('piutang', 'Piutang', rp(d.piutang), nfx(d.piutangObjek) + ' objek belum lunas', d.piutang ? 'red' : '') +
     '<div class="card k"><div class="kh"><span class="kic">' + ico('chart') + '</span><span class="kl">Realisasi pembayaran</span></div><b class="kv2">' + d.realisasi.toString().replace('.', ',') + '%</b><div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div></div>' + '</div>';
 
-  if (!d.bulan) h += '<div class="tcard"><div class="tc-h"><h2>Realisasi per Bulan</h2><div class="ci r">Tahun ' + d.tahun + '</div></div><div class="tw"><table class="t"><tr><th>Bulan</th><th class="r">Target</th><th class="r">Terbayar</th><th class="r">%</th></tr>' +
+  if (!d.bulan && !d.dari) h += '<div class="tcard"><div class="tc-h"><h2>Realisasi per Bulan</h2><div class="ci r">Tahun ' + d.tahun + '</div></div><div class="tw"><table class="t"><tr><th>Bulan</th><th class="r">Target</th><th class="r">Terbayar</th><th class="r">%</th></tr>' +
     d.perBulan.map(function (b) {
       var p = persen(b.terbayar, b.target);
       return '<tr><td>' + BLN_PJG[b.bulan - 1] + '</td><td class="r">' + rp(b.target) + '</td><td class="r' + (b.terbayar ? ' g' : ' z') + '">' + rp(b.terbayar) + '</td><td class="r" style="min-width:110px">' + p.toString().replace('.', ',') + '%<div class="prog"><div style="width:' + p + '%"></div></div></td></tr>';
@@ -961,7 +1001,7 @@ async function pageHome() {
 
   if (d.perKec.length > 1) {
     var mx = Math.max.apply(null, d.perKec.map(function (k) { return Math.max(k.ditetapkan, k.terbayar); }).concat([1]));
-    h += '<div class="tcard"><div class="tc-h"><h2>Rekap per Kecamatan</h2><div class="ci r">' + (d.bulan ? BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun) + ' · ' + d.perKec.length + ' kecamatan</div></div>' +
+    h += '<div class="tcard"><div class="tc-h"><h2>Rekap per Kecamatan</h2><div class="ci r">' + lbS + ' · ' + d.perKec.length + ' kecamatan</div></div>' +
       '<div class="dg"><div class="dg-lg"><span><i class="a"></i>Ditetapkan</span><span><i class="b"></i>Terbayar</span></div>' +
       d.perKec.map(function (k) {
         var p = persen(k.terbayar, k.ditetapkan);
@@ -977,7 +1017,7 @@ async function pageHome() {
       '<div style="margin-top:6px">' + t.alasan.map(function (a) { return '<span class="badge amb" style="margin:0 4px 4px 0;white-space:normal">' + esc(a) + '</span>'; }).join('') + '</div></div>';
   }).join('') + '</div>' + (d.cekTotal > d.cek.length ? '<p class="note">Menampilkan ' + d.cek.length + ' terbaru.</p>' : '')
     : '<div class="card empty">Tidak ada pembayaran yang perlu dicek.</div>';
-  h += '<p class="note">Penanda: lokasi &gt; 300 m dari titik acuan objek, tanggal foto berbeda dari tanggal transaksi, tanpa GPS, atau kelebihan bayar. Admin DLH dapat menandai “Sudah Dicek” dari detail transaksi.</p>';
+  if (!ptg) h += '<p class="note">Penanda: lokasi &gt; 300 m dari titik acuan objek, tanggal foto berbeda dari tanggal transaksi, tanpa GPS, atau kelebihan bayar. Admin DLH dapat menandai “Sudah Dicek” dari detail transaksi.</p>';
 
   $('#hBody').innerHTML = h;
   $('#hBody').onclick = async function (e) {
@@ -1004,14 +1044,14 @@ async function pageObjek() {
     host.innerHTML = kepala('Objek Retribusi', '<button class="btn" id="oCetak">' + ico('doc') + 'Cetak Laporan</button><button class="btn primary" id="oAdd">' + ico('plus') + 'Tambah Objek</button>') +
       '<div class="fcard">' + fcari('oQ', 'Cari nama, ID, alamat, atau kelurahan/desa') + selKec('oKec') +
       fld('Jenis objek', '<select id="oJenis"><option value="">Semua jenis objek</option>' + S.ref.jenis.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('') + '</select>') +
-      fld('Status MOU', '<select id="oMou"><option value="">Semua status MOU</option>' + Object.keys(S.ref.statusMou).map(function (k) { return '<option>' + esc(S.ref.statusMou[k]) + '</option>'; }).join('') + '</select>') +
+      (PTG() ? fld('Kelurahan/Desa', '<select id="oKel"></select>') : fld('Status MOU', '<select id="oMou"><option value="">Semua status MOU</option>' + Object.keys(S.ref.statusMou).map(function (k) { return '<option>' + esc(S.ref.statusMou[k]) + '</option>'; }).join('') + '</select>')) +
       '</div>' +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Objek</h2><div class="ci r" id="oInfo"></div>' + limSel('o') + '</div><div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>ID Objek</th><th>Nama Usaha/Kegiatan</th><th>Jenis</th><th>Kelurahan/Desa</th><th>Kecamatan</th><th>Status Objek</th><th class="c">Status MOU</th><th>Status Penandatanganan</th><th>Metode</th><th class="c">Tarif (Rp/bln)</th><th>Penanggung Jawab</th><th>Jabatan</th><th>NIK</th><th>No HP</th><th>Aksi</th></tr></thead><tbody id="oBody"></tbody></table></div></div>';
-    ['oQ', 'oMou', 'oJenis'].forEach(function (i) { $('#' + i).oninput = resetObjek; $('#' + i).onchange = resetObjek; });
+    (PTG() ? ['oQ', 'oKel', 'oJenis'] : ['oQ', 'oMou', 'oJenis']).forEach(function (i) { $('#' + i).oninput = resetObjek; $('#' + i).onchange = resetObjek; });
     if ($('#oKec')) $('#oKec').onchange = resetObjek;
     $('#oAdd').onclick = function () { formObjek(null); };
     $('#oCetak').onclick = cetakObjek;
-    siapTabel('#oBody', ['Status Objek', 'Penanggung Jawab', 'Jabatan', 'NIK', 'No HP', 'Status Penandatanganan'].concat(kecSembunyi() ? ['Kecamatan'] : []));
+    siapTabel('#oBody', ['Status Objek', 'Penanggung Jawab', 'Jabatan', 'NIK', 'No HP', 'Status Penandatanganan'].concat(kecSembunyi() ? ['Kecamatan'] : []).concat(PTG() ? ['ID Objek', 'Status MOU', 'Aksi'] : []));
     pasangUrut('#oBody', 'objek', PETA_OBJEK, resetObjek);
     pasangLim('o', listObjek);
     $('#oBody').onclick = function (e) {
@@ -1021,13 +1061,13 @@ async function pageObjek() {
     };
   }
   var ro = await ambilSWR('objek', function () { return api('api_objekList', S.token); }, pageObjek, 'objek');
-  if (ro) { S.objek = ro; resetObjek(); }
+  if (ro) { S.objek = ro; if ($('#oKel')) isiOpsi('#oKel', unik(ro.map(function (o) { return o.kel; })), 'Semua kelurahan/desa'); resetObjek(); }
 }
 function resetObjek() { listObjek(); }
 function filterObjek() {
-  var q = $('#oQ').value.trim().toLowerCase(), kec = $('#oKec') ? $('#oKec').value : '', mo = $('#oMou').value, jn = $('#oJenis').value;
+  var q = $('#oQ').value.trim().toLowerCase(), kec = $('#oKec') ? $('#oKec').value : '', mo = $('#oMou') ? $('#oMou').value : '', kl = $('#oKel') ? $('#oKel').value : '', jn = $('#oJenis').value;
   return urutkan(S.objek, 'objek', PETA_OBJEK).filter(function (o) {
-    return (!kec || o.kec === kec) && (!jn || o.jenis === jn) && (!mo || o.statusMou === mo) && (!q || (o.nama + ' ' + o.id + ' ' + o.alamat + ' ' + o.pj + ' ' + o.kel).toLowerCase().indexOf(q) >= 0);
+    return (!kec || o.kec === kec) && (!jn || o.jenis === jn) && (!mo || o.statusMou === mo) && (!kl || o.kel === kl) && (!q || (o.nama + ' ' + o.id + ' ' + o.alamat + ' ' + o.pj + ' ' + o.kel).toLowerCase().indexOf(q) >= 0);
   });
 }
 function listObjek() {
@@ -1065,7 +1105,7 @@ function cetakObjek() {
   if (!rows.length) { toast('Tidak ada data untuk dicetak.', true); return; }
   var ex = kecInfo($('#oKec') && $('#oKec').value);
   if ($('#oJenis').value) ex.push('Jenis ' + $('#oJenis').value);
-  if ($('#oMou').value) ex.push($('#oMou').value);
+  if ($('#oMou') && $('#oMou').value) ex.push($('#oMou').value);
   if ($('#oQ').value.trim()) ex.push('Pencarian “' + $('#oQ').value.trim() + '”');
   var multi = !kecSembunyiCetak();
   var html = lapHtml({
@@ -1492,26 +1532,28 @@ async function pageTrx() {
   if (!$('#tAdd')) {
     host.innerHTML = kepala('Transaksi Retribusi', '<button class="btn primary" id="tAdd">' + ico('plus') + 'Tambah Transaksi</button>') +
       '<div class="fcard">' + fcari('tQ', 'Cari nama, no. bukti, atau kelurahan/desa') +
-      fld('Periode', '<select id="tBulan" aria-label="Bulan"><option value="">Semua bulan</option>' + S.ref.periode.map(function (p) { return '<option value="' + p.v + '">' + esc(p.t) + '</option>'; }).join('') + '</select>') +
-      fld('Jenis objek', '<select id="tJenis" aria-label="Jenis objek"><option value="">Semua jenis objek</option>' + S.ref.jenis.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('') + '</select>') +
+      (PTG() ? fld('Dari tanggal', '<input type="date" id="tDari" aria-label="Dari tanggal">') + fld('Sampai tanggal', '<input type="date" id="tSampai" aria-label="Sampai tanggal">') :
+        fld('Periode', '<select id="tBulan" aria-label="Bulan"><option value="">Semua bulan</option>' + S.ref.periode.map(function (p) { return '<option value="' + p.v + '">' + esc(p.t) + '</option>'; }).join('') + '</select>') +
+        fld('Jenis objek', '<select id="tJenis" aria-label="Jenis objek"><option value="">Semua jenis objek</option>' + S.ref.jenis.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('') + '</select>')) +
       '</div><div class="kpi" id="tKpi" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div>' +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Transaksi</h2><div class="ci" id="tInfo"></div><div class="tc-a">' +
       (S.user.role === 'ADMIN' ? '<button class="btn" id="tRekap">' + ico('chart') + 'Rekap Penerimaan</button>' : '') +
       '<button class="btn" id="tCetak">' + ico('doc') + 'Cetak (sesuai filter)</button><button class="btn" id="tCetakMgg">' + ico('doc') + 'Cetak Mingguan</button>' + limSel('t') + '</div></div><div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>Tanggal</th><th>No Bukti / ID Transaksi</th><th>Nama Usaha/Kegiatan</th><th>Periode</th><th class="r">Tarif</th><th class="r">Diterima</th><th class="r">Selisih</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="tBody"></tbody></table></div></div>';
-    siapTabel('#tBody', []);
+    siapTabel('#tBody', PTG() ? ['No Bukti / ID Transaksi', 'Tarif', 'Selisih', 'Metode', 'Aksi'] : []);
     pasangUrut('#tBody', 'trx', PETA_TRX, listTrx); pasangLim('t', listTrx);
-    $('#tBulan').value = S.ref.periodeIni;
-    $('#tBulan').onchange = pageTrx; $('#tJenis').onchange = pageTrx;
+    if (PTG()) { $('#tDari').value = S.ref.hariIni.slice(0, 8) + '01'; $('#tSampai').value = S.ref.hariIni; $('#tDari').onchange = pageTrx; $('#tSampai').onchange = pageTrx; }
+    else { $('#tBulan').value = S.ref.periodeIni; $('#tBulan').onchange = pageTrx; $('#tJenis').onchange = pageTrx; }
     var tt; $('#tQ').oninput = function () { clearTimeout(tt); tt = setTimeout(pageTrx, 450); };
     $('#tCetak').onclick = cetakTrxFilter; $('#tCetakMgg').onclick = modalLaporanMgg; if ($('#tRekap')) $('#tRekap').onclick = modalRekap;
     $('#tAdd').onclick = async function () { if (await muatObjekCepat()) formTrx(null); };
     $('#tBody').onclick = function (e) {
-      var b = e.target.closest('button'); if (!b) return;
+      var b = e.target.closest('button, .lnk'); if (!b) return;
       var t = S.trx.filter(function (x) { return x.id === (b.dataset.det || b.dataset.kw || b.dataset.hps); })[0]; if (!t) return;
       if (b.dataset.det) detailTrx(t); else if (b.dataset.hps) hapusTrx(t); else cetakKwitansi(t);
     };
   }
-  var f = { bulan: $('#tBulan').value, jenis: $('#tJenis').value, q: $('#tQ').value };
+  var f = PTG() ? { bulan: '', jenis: '', dari: $('#tDari').value, sampai: $('#tSampai').value, q: $('#tQ').value } : { bulan: $('#tBulan').value, jenis: $('#tJenis').value, q: $('#tQ').value };
+  if (PTG()) { if (!f.dari || !f.sampai) return; if (f.dari > f.sampai) { toast('Tanggal awal tidak boleh melebihi tanggal akhir.', true); return; } }
   var r = await ambilSWR('trx|' + JSON.stringify(f), function () { return api('api_trxList', S.token, f); }, pageTrx, 'trx');
   if (!r) return; S.trx = r;
   listTrx();
@@ -1540,7 +1582,7 @@ function listTrx() {
   $('#tBody').innerHTML = r.length ? r.slice(0, batas('t', r.length)).map(function (t, i) {
     return '<tr><td data-l="No">' + (i + 1) + '</td><td data-l="Tanggal" class="nw">' + tglID(t.tanggal) + '</td>' +
       '<td data-l="No Bukti">' + esc(t.noBukti) + '<div class="id">' + esc(t.id) + '</div></td>' +
-      '<td data-l="Nama Usaha/Kegiatan" class="w"><b>' + esc(t.nama) + '</b>' + subObj(t.jenis || objTrx(t).jenis, kelTrx(t), t.kec) + '</td>' +
+      '<td data-l="Nama Usaha/Kegiatan" class="w">' + (PTG() ? '<b class="lnk" data-det="' + esc(t.id) + '">' + esc(t.nama) + '</b>' : '<b>' + esc(t.nama) + '</b>') + subObj(t.jenis || objTrx(t).jenis, kelTrx(t), t.kec) + '</td>' +
       '<td data-l="Periode" class="nw">' + esc(periodeLabel(t.periode)) + '</td>' +
       '<td data-l="Tarif" class="r nw">' + nf(t.tarif) + '</td><td data-l="Diterima" class="r nw"><b>' + nf(t.jumlah) + '</b></td><td data-l="Selisih" class="r nw">' + signed(t.selisih) + '</td>' +
       '<td data-l="Metode">' + esc(t.metode) + '</td><td data-l="Status"><span class="badge ' + (t.status === 'Lunas' ? '' : 'red') + '">' + esc(t.status) + '</span></td>' +
@@ -1549,7 +1591,7 @@ function listTrx() {
   trimBody('#tBody');
 }
 async function cetakTrxFilter() {
-  var w = bukaCetak(), bulan = $('#tBulan').value, jenis = $('#tJenis').value, q = $('#tQ').value.trim();
+  var w = bukaCetak(), bulan = $('#tBulan') ? $('#tBulan').value : '', jenis = $('#tJenis') ? $('#tJenis').value : '', q = $('#tQ').value.trim();
   busy(true);
   try {
     var rows = await api('api_trxLaporan', S.token, { bulan: bulan, jenis: jenis, q: q });
@@ -1854,18 +1896,20 @@ async function pagePiutang() {
       '<div class="fcard">' + fld('Tahun', '<select id="pTahun" aria-label="Tahun">' + S.ref.tahunList.map(function (y) { return '<option>' + y + '</option>'; }).join('') + '</select>') +
       fld('Bulan', '<select id="pBulan" aria-label="Bulan"><option value="0">Semua bulan (setahun)</option>' + BLN_PJG.map(function (b, i) { return '<option value="' + (i + 1) + '">' + b + '</option>'; }).join('') + '</select>') +
       fcari('pQ', 'Cari nama / ID') + selKec('pKec') +
-      fld('Jenis objek', '<select id="pJenis"></select>') + fld('Kelurahan/Desa', '<select id="pKel"></select>') + '</div>' +
+      (PTG() ? '' : fld('Jenis objek', '<select id="pJenis"></select>') + fld('Kelurahan/Desa', '<select id="pKel"></select>')) + '</div>' +
       '<div class="kpi" id="pKpi"></div>' +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Piutang</h2><div class="ci r" id="pInfo"></div>' + limSel('p') + '</div><div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>ID Objek</th><th>Nama Usaha/Kegiatan</th><th>Alamat</th><th class="r">Tarif/bln</th><th class="r">Ditetapkan</th><th class="r">Terbayar</th><th class="r">Piutang</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody id="pBody"></tbody></table></div></div>';
-    siapTabel('#pBody', []);
+    siapTabel('#pBody', PTG() ? ['ID Objek', 'Alamat', 'Tarif/bln', 'Ditetapkan', 'Terbayar', 'Aksi'] : []);
     pasangUrut('#pBody', 'piutang', PETA_PIUTANG, resetPiutang);
     $('#pBulan').value = String(Number(S.ref.periodeIni.slice(5)));
     $('#pTahun').onchange = pagePiutang; $('#pBulan').onchange = pagePiutang;
-    ['pQ', 'pJenis', 'pKel'].forEach(function (i) { $('#' + i).oninput = resetPiutang; $('#' + i).onchange = resetPiutang; });
+    ['pQ', 'pJenis', 'pKel'].forEach(function (i) { if (!$('#' + i)) return; $('#' + i).oninput = resetPiutang; $('#' + i).onchange = resetPiutang; });
     if ($('#pKec')) $('#pKec').onchange = resetPiutang;
     $('#pCetak').onclick = cetakPiutang;
     pasangLim('p', listPiutang);
     $('#pBody').onclick = async function (e) {
+      var n = e.target.closest('[data-pt]');
+      if (n) { var rr = S.piutang.rows.filter(function (z) { return z.id === n.dataset.pt; })[0]; if (rr) detailPiutang(rr); return; }
       var b = e.target.closest('[data-bayar]'); if (!b) return;
       if (await muatObjekCepat()) {
         var o = S.objek.filter(function (z) { return z.id === b.dataset.bayar; })[0];
@@ -1883,7 +1927,7 @@ async function pagePiutang() {
 }
 function resetPiutang() { listPiutang(); }
 function filterPiutang() {
-  var q = $('#pQ').value.trim().toLowerCase(), kec = $('#pKec') ? $('#pKec').value : '', jn = $('#pJenis').value, kl = $('#pKel').value;
+  var q = $('#pQ').value.trim().toLowerCase(), kec = $('#pKec') ? $('#pKec').value : '', jn = $('#pJenis') ? $('#pJenis').value : '', kl = $('#pKel') ? $('#pKel').value : '';
   return urutkan(S.piutang.rows, 'piutang', PETA_PIUTANG).filter(function (r) {
     return (!kec || r.kec === kec) && (!jn || r.jenis === jn) && (!kl || r.kel === kl) && (!q || (r.nama + ' ' + r.id).toLowerCase().indexOf(q) >= 0);
   });
@@ -1904,7 +1948,7 @@ function listPiutang() {
     kartuK('piutang', 'Total piutang', rp(sum('piutang')), '', 'red');
   $('#pInfo').textContent = per + ' · ' + nf(rows.length) + ' objek' + infoLim('p', rows.length) + (rows.length > lim ? ' (laporan cetak memuat semua)' : '');
   $('#pBody').innerHTML = rows.length ? rows.slice(0, lim).map(function (r, i) {
-    return '<tr><td data-l="No">' + (i + 1) + '</td><td data-l="ID Objek" class="id nw">' + esc(r.id) + '</td><td data-l="Nama Usaha/Kegiatan" class="w"><b>' + esc(r.nama) + '</b>' + subObj(r.jenis, '', '') + '</td>' +
+    return '<tr><td data-l="No">' + (i + 1) + '</td><td data-l="ID Objek" class="id nw">' + esc(r.id) + '</td><td data-l="Nama Usaha/Kegiatan" class="w">' + (PTG() ? '<b class="lnk" data-pt="' + esc(r.id) + '">' + esc(r.nama) + '</b>' : '<b>' + esc(r.nama) + '</b>' + subObj(r.jenis, '', '')) + '</td>' +
       '<td data-l="Alamat" class="w">' + esc(r.alamat || '-') + subObj('', r.kel, r.kec) + '</td>' +
       '<td data-l="Tarif/bln" class="r">' + nf(r.tarif) + '</td><td data-l="Ditetapkan" class="r">' + nf(r.ditetapkan) + '</td><td data-l="Terbayar" class="r">' + nf(r.terbayar) + '</td>' +
       '<td data-l="Piutang" class="r" style="color:var(--red)"><b>' + nf(r.piutang) + '</b></td><td data-l="Keterangan">' + esc(ketPiutang(r)) + '</td>' +
@@ -1912,13 +1956,27 @@ function listPiutang() {
   }).join('') : '<tr><td colspan="10" class="empty">Tidak ada piutang pada filter ini. 🎉</td></tr>';
   trimBody('#pBody');
 }
+function detailPiutang(r) {
+  var d = S.piutang, nf = function (n) { return rp(n); }, kv = function (k, v) { return '<dt>' + k + '</dt><dd>' + v + '</dd>'; };
+  modal('Detail Piutang', '<div class="card"><dl class="kv" style="grid-template-columns:max-content 1fr;column-gap:18px">' +
+    kv('ID Objek', esc(r.id)) + kv('Nama Usaha/Kegiatan', '<b>' + esc(r.nama) + '</b>') + kv('Jenis Objek', esc(r.jenis || '-')) +
+    kv('Alamat', esc(r.alamat || '-')) + kv('Kelurahan/Desa', esc(kelPendek(r.kel) || '-')) + kv('Kecamatan', esc(r.kec || '-')) +
+    kv('Periode', esc(labelPiutang())) + kv('Tarif/bln', nf(r.tarif)) + kv('Ditetapkan', nf(r.ditetapkan)) + kv('Terbayar', nf(r.terbayar)) +
+    kv('Piutang', '<b style="color:var(--red)">' + nf(r.piutang) + '</b>') + kv('Keterangan', esc(ketPiutang(r))) +
+    '</dl></div><button class="btn primary block" id="dpBayar" style="margin-top:10px">+ Bayar</button>');
+  $('#dpBayar').onclick = async function () {
+    if (!(await muatObjekCepat())) return;
+    var o = S.objek.filter(function (z) { return z.id === r.id; })[0]; if (!o) return;
+    closeModal(); formTrx(o, d.bulan ? d.tahun + '-' + String(d.bulan).padStart(2, '0') : null);
+  };
+}
 function cetakPiutang() {
   var rows = filterPiutang();
   if (!rows.length) { toast('Tidak ada data untuk dicetak.', true); return; }
   var d = S.piutang, ex = kecInfo($('#pKec') && $('#pKec').value);
   if (d.bulan) ex.push('Bulan ' + BLN_PJG[d.bulan - 1]);
-  if ($('#pJenis').value) ex.push('Jenis ' + $('#pJenis').value);
-  if ($('#pKel').value) ex.push($('#pKel').value);
+  if ($('#pJenis') && $('#pJenis').value) ex.push('Jenis ' + $('#pJenis').value);
+  if ($('#pKel') && $('#pKel').value) ex.push($('#pKel').value);
   if ($('#pQ').value.trim()) ex.push('Pencarian “' + $('#pQ').value.trim() + '”');
   var s = function (k) { return rows.reduce(function (a, r) { return a + r[k]; }, 0); };
   var per = d.bulan ? BLN_PJG[d.bulan - 1] : 'Tahun ' + d.tahun;
@@ -2156,9 +2214,13 @@ function listReferensi() {
   var q = ($('#rfQ').value || '').toLowerCase().trim(), all = S.tarifRef || [];
   var rows = all.filter(function (x) { return !q || (x.objek + ' ' + x.golongan + ' ' + nfRef(x.tarif) + ' ' + x.satuan).toLowerCase().indexOf(q) >= 0; });
   $('#rfInfo').textContent = rows.length + ' dari ' + all.length + ' golongan';
-  var prev = null;
+  var prev = null, ptg = PTG();
   $('#rfBody').innerHTML = rows.length ? rows.map(function (x) {
     var awal = x.objek !== prev; prev = x.objek;
+    if (ptg) {   // Petugas: judul = objek retribusi; baris 1 = golongan; baris 2 = tarif
+      return (awal ? '<tr class="rf-h"><td colspan="3" class="rf-o">' + esc(x.objek) + '</td></tr>' : '') +
+        '<tr class="rf-g"><td class="rf-e"></td><td data-l="Golongan">' + esc(x.golongan) + '</td><td data-l="Tarif" class="nw rf-t">Rp ' + nfRef(x.tarif) + ' <span class="mut">/ ' + esc(x.satuan) + '</span></td></tr>';
+    }
     return '<tr' + (awal ? ' class="rf-b"' : '') + '><td data-l="Objek Retribusi" class="rf-o">' + (awal ? esc(x.objek) : '') + '</td><td data-l="Golongan">' + esc(x.golongan) + '</td>' +
       '<td data-l="Tarif" class="r nw">Rp ' + nfRef(x.tarif) + ' <span class="mut">/ ' + esc(x.satuan) + '</span></td></tr>';
   }).join('') : '<tr><td colspan="3" class="empty">Tidak ada tarif yang cocok.</td></tr>';
