@@ -280,8 +280,11 @@ th.srt.desc::after{content:' ▼';opacity:1;color:var(--g)}
 @media(min-width:700px){.ov{align-items:center}.sheet{border-radius:20px}}
 /* combobox */
 .cb{position:relative}
-.cb-l{position:absolute;left:0;right:0;top:100%;z-index:10;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:260px;overflow:auto;margin-top:3px}
+.cb-l{position:absolute;left:0;right:0;top:100%;z-index:10;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:min(46vh,340px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;margin-top:3px}
+.cb-l .cb-h{position:sticky;top:0;background:#f4f8f5;color:var(--mut,#5b6b62);font-size:12px;padding:6px 12px;cursor:default;z-index:1}
 .cb-l div{padding:9px 12px;border-bottom:1px solid #eef2ef;cursor:pointer}
+.cb-l .cb-m{color:var(--mut);font-size:12px;text-align:center;cursor:default}
+.cb-l .cb-m:hover{background:#fff}
 .cb-l div:last-child{border:0}
 .cb-l div:hover,.cb-l div.act{background:var(--gl)}
 
@@ -912,27 +915,51 @@ function formErr(msg) {
 }
 
 /* ================= COMBOBOX (ketik untuk cari) ================= */
-function combo(inp, list, getItems, match, disp, onPick, onClear) {
-  var act = -1, items = [];
+function combo(inp, list, getItems, match, disp, onPick, onClear, opsi) {
+  opsi = opsi || {};
+  var act = -1, items = [], menyentuh = false, maks = opsi.maks || 8, bagian = opsi.bagian || 0, tampil = 0;
+  function baris(x, i) { return '<div data-i="' + i + '" class="' + (i === act ? 'act' : '') + '">' + disp(x) + '</div>'; }
+  function penanda() { return tampil < items.length ? '<div class="cb-m">Memuat sisanya saat digulir… (' + tampil + ' dari ' + items.length + ')</div>' : ''; }
   function render() {
     var q = inp.value.trim().toLowerCase();
-    items = getItems().filter(function (x) { return !q || match(x).toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
-    list.innerHTML = items.length ? items.map(function (x, i) { return '<div data-i="' + i + '" class="' + (i === act ? 'act' : '') + '">' + disp(x) + '</div>'; }).join('')
-      : '<div class="mut">Tidak ditemukan</div>';
+    var semua = getItems().filter(function (x) { return !q || match(x).toLowerCase().indexOf(q) >= 0; });
+    items = semua.slice(0, maks);
+    tampil = bagian ? Math.min(items.length, Math.max(bagian, act + 1)) : items.length;
+    var kep = opsi.hitung && items.length ? '<div class="cb-h">' + (q ? items.length + ' dari ' : '') + opsi.hitung(getItems().length) + (q ? '' : ' · ketik untuk menyaring') + '</div>' : '';
+    list.innerHTML = items.length ? kep + items.slice(0, tampil).map(baris).join('') + penanda() : '<div class="mut">Tidak ditemukan</div>';
     list.hidden = false;
   }
-  function pick(i) { var x = items[i]; if (!x) return; list.hidden = true; onPick(x); }
+  // Muat sisanya bertahap saat daftar digulir mendekati dasar (daftar panjang tetap ringan di HP).
+  list.addEventListener('scroll', function () {
+    if (!bagian || tampil >= items.length) return;
+    if (list.scrollTop + list.clientHeight < list.scrollHeight - 120) return;
+    var mk = list.querySelector('.cb-m'); if (mk) mk.remove();
+    var sampai = Math.min(items.length, tampil + bagian), h = '';
+    for (var i = tampil; i < sampai; i++) h += baris(items[i], i);
+    tampil = sampai;
+    list.insertAdjacentHTML('beforeend', h + penanda());
+  });
+  function pick(i) { var x = items[i]; if (!x) return; menyentuh = false; list.hidden = true; onPick(x); }
   inp.addEventListener('input', function () { act = -1; if (onClear) onClear(); render(); });
   inp.addEventListener('focus', render);
-  inp.addEventListener('blur', function () { setTimeout(function () { list.hidden = true; }, 180); });
+  // Daftar tetap terbuka selama jari/kursor masih berada di daftar (mis. sedang menggulir); tertutup bila menyentuh di luar daftar.
+  inp.addEventListener('blur', function () { setTimeout(function () { if (!menyentuh) list.hidden = true; }, 200); });
   inp.addEventListener('keydown', function (e) {
     if (e.key === 'ArrowDown') { act = Math.min(items.length - 1, act + 1); render(); e.preventDefault(); }
     else if (e.key === 'ArrowUp') { act = Math.max(0, act - 1); render(); e.preventDefault(); }
     else if (e.key === 'Enter' && act >= 0) { pick(act); e.preventDefault(); }
   });
-  list.addEventListener('pointerdown', function (e) {
-    var el = e.target.closest('[data-i]'); if (el) { e.preventDefault(); pick(Number(el.dataset.i)); }
+  list.addEventListener('pointerdown', function () { menyentuh = true; });
+  // Memilih lewat 'click' (bukan pointerdown): gulir dengan jari tidak menghasilkan click, jadi tidak salah pilih.
+  list.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-i]'); if (el) pick(Number(el.dataset.i));
   });
+  function luar(e) {
+    if (!document.body.contains(list)) { document.removeEventListener('pointerdown', luar, true); return; }
+    if (e.target === inp || list.contains(e.target)) return;
+    menyentuh = false; list.hidden = true;
+  }
+  document.addEventListener('pointerdown', luar, true);
 }
 
 
@@ -1915,9 +1942,10 @@ function formTrx(pref, periodePref) {
     hitung(); muatPrev();
   }
   function kosong() { sel = null; prev = 0; ['t_id', 't_kel', 't_kec', 't_tarif'].forEach(function (i) { if ($('#' + i)) $('#' + i).value = ''; }); $('#t_sumber').textContent = ''; $('#t_prev').textContent = ''; hitung(); }
-  combo($('#t_nama'), $('#t_list'), function () { return S.objek.filter(function (o) { return o.statusObjek === 'Aktif' && o.tarifEfektif > 0; }); },
+  combo($('#t_nama'), $('#t_list'), function () { return S.objek.filter(function (o) { return o.statusObjek === 'Aktif' && o.tarifEfektif > 0; }).sort(function (x, y) { return String(x.nama).localeCompare(String(y.nama), 'id'); }); },
     function (o) { return o.nama + ' ' + o.id; },
-    function (o) { return PTG() ? '<b>' + esc(o.nama) + '</b><br><span class="mut">' + esc([o.alamat || '-', kelPendek(o.kel)].filter(Boolean).join(' • ')) + '</span>' : '<b>' + esc(o.nama) + '</b><br><span class="mut">' + esc(o.id) + ' · ' + esc(o.kec) + ' · ' + rp(o.tarifEfektif) + '</span>'; }, pilih, kosong);
+    function (o) { return PTG() ? '<b>' + esc(o.nama) + '</b><br><span class="mut">' + esc([o.alamat || '-', kelPendek(o.kel)].filter(Boolean).join(' • ')) + '</span>' : '<b>' + esc(o.nama) + '</b><br><span class="mut">' + esc(o.id) + ' · ' + esc(o.kec) + ' · ' + rp(o.tarifEfektif) + '</span>'; }, pilih, kosong,
+    { maks: 100000, bagian: 60, hitung: function (n) { return new Intl.NumberFormat('id-ID').format(n) + ' objek bertarif'; } });
   if (pref) pilih(pref);
   $('#t_per').onchange = muatPrev;
   $('#t_jml').oninput = function () { var v = num(this.value); this.value = v ? new Intl.NumberFormat('id-ID').format(v) : ''; hitung(); };
