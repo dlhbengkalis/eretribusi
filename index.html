@@ -1102,9 +1102,8 @@ function kepalaPtg(judul, sub) { return '<div class="ph"><div><h1>' + judul + '<
 /* ----- Petugas: pilihan periode tunggal & komponen tampilan ----- */
 function opsiPeriodePtg() {
   var h = S.ref.hariIni, th = h.slice(0, 4), bl = Number(h.slice(5, 7)), hr = Number(h.slice(8, 10)), o = [];
-  o.push(['bi', (hr > 1 ? '1-' + hr : '1') + ' ' + BLN[bl - 1] + ' ' + th]);
+  o.push(['bi', BLN_PJG[bl - 1] + ' ' + th]);
   for (var m = bl - 1; m >= 1; m--) o.push([String(m), BLN_PJG[m - 1] + ' ' + th]);
-  if (bl > 1) o.push(['th', 'Tahun ' + th + ' (1 Jan-' + hr + ' ' + BLN[bl - 1] + ')']);
   o.push(['xx', 'Pilih tanggal sendiri...']);
   return o;
 }
@@ -1134,7 +1133,7 @@ function kpiHomePtg(d, nfx) {
     '<div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div><div class="hero-s" data-kpi="real">' + pr + '% dari penetapan</div></div>' +
     '<div class="srows">' + srow('wallet', 'Ditetapkan', rp(d.ditetapkan), '', 'dt') +
     srow('piutang', 'Piutang', rp(d.piutang), nfx(d.piutangObjek) + ' objek belum lunas', 'pi', d.piutang ? 'red' : '') +
-    srow('users', 'Wajib retribusi', nfx(d.wajib), '', 'wajib') + '</div>';
+    srow('users', 'Objek retribusi', nfx(d.wajib), '', 'wajib') + '</div>';
 }
 function kpiPiutangPtg(n, sum, nf) {
   return '<div class="pbig" data-kpi="pi"><span class="sic">' + ico('piutang') + '</span><div><span class="kl">Total piutang</span><b>' + rp(sum('piutang')) + '</b><span class="ks" data-kpi="ob">' + nf(n) + ' objek berpiutang</span></div></div>' +
@@ -1320,10 +1319,12 @@ async function detailHome(jenis, d) {
   }
   if (!(await muatObjekCepat())) return;
   var aktif = (S.objek || []).filter(function (o) { return o.statusObjek === 'Aktif'; });
+  var st = {}; if (d.saya) { d.saya.forEach(function (x) { st[x] = 1; }); aktif = aktif.filter(function (o) { return st[o.id]; }); }
   if (jenis === 'wajib') aktif = aktif.filter(function (o) { return o.tarifEfektif > 0; });
-  if (jenis === 'wajib') { modalDaftar('Wajib Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-'), }; })); return; }
+  if (jenis === 'wajib') { modalDaftar('Objek Retribusi', nf(aktif.length) + ' objek aktif', aktif.map(function (o) { return { k: esc(o.nama), s: esc(o.alamat || '-'), }; })); return; }
   var trx = await jalan(function () { return api('api_trxList', S.token, { bulan: '', jenis: '', dari: d.dari, sampai: d.sampai, q: '' }); });
   if (!trx) return;
+  if (d.saya) trx = trx.filter(function (t) { return st[t.idObjek]; });
   if (jenis === 'by') {
     modalDaftar('Terbayar', 'Periode ' + esc(tglID(d.dari)) + ' s.d. ' + esc(tglID(d.sampai)) + ' · ' + nf(trx.length) + ' transaksi · <b>' + rp(d.terbayar) + '</b>',
       trx.map(function (t) { return { k: esc(t.nama), s: tglID(t.tanggal), v: nf(t.jumlah) }; })); return;
@@ -1362,7 +1363,7 @@ async function pageHome() {
   var lbS = d.dari ? tglID(d.dari) + ' s.d. ' + tglID(d.sampai) : (d.bulan ? BLN_PJG[d.bulan - 1] + ' ' + d.tahun : 'Tahun ' + d.tahun);
   var nfx = function (n) { return new Intl.NumberFormat('id-ID').format(Number(n) || 0); };
   var kReal = '<div class="card k"' + (ptg ? ' data-kpi="real" style="cursor:pointer"' : '') + '><div class="kh"><span class="kic">' + ico('chart') + '</span><span class="kl">Realisasi pembayaran</span></div><b class="kv2">' + d.realisasi.toString().replace('.', ',') + '%</b><div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div></div>';
-  var h = ptg ? kpiHomePtg(d, nfx) : '<div class="kpi">' +
+  var h = ptg ? kpiHomePtg(d, nfx) + (d.saya && !d.saya.length ? '<p class="note">Angka di sini hanya mencakup objek retribusi yang Anda proses. Objek akan muncul setelah Anda mencatat transaksi pertama.</p>' : '') : '<div class="kpi">' +
     kartuK('users', 'Wajib retribusi', nfx(d.wajib), nfx(d.wajib) + ' objek aktif') +
     kartuK('doc', 'Wajib retribusi MOU', nfx(d.mou), nfx(d.mouTtd) + ' sudah ditandatangani') +
     kartuK('pin', 'Wajib retribusi non-MOU', nfx(d.nonMou), '') +
@@ -2398,7 +2399,7 @@ function listPiutang() {
   if (PTG()) {
     $('#pBody').innerHTML = rows.length ? rows.slice(0, lim).map(function (r) {
       return '<tr class="pr" data-pt="' + esc(r.id) + '"><td class="pr-l"><div class="pr-n"><span class="ck pt">!</span><b>' + esc(r.nama) + '</b></div></td><td class="pr-r mrh"><b>' + nf(r.piutang) + '</b></td></tr>';
-    }).join('') + (rows.length > lim ? moreRow('p', rows.length - lim) : '') : '<tr><td class="empty">Tidak ada piutang pada filter ini. 🎉</td></tr>';
+    }).join('') + (rows.length > lim ? moreRow('p', rows.length - lim) : '') : '<tr><td class="empty">' + (d.saya === 0 ? 'Belum ada objek yang Anda proses. Piutang muncul setelah Anda mencatat transaksi pertama.' : 'Tidak ada piutang pada filter ini. 🎉') + '</td></tr>';
     return;
   }
   $('#pInfo').textContent = per + ' · ' + nf(rows.length) + ' objek' + infoLim('p', rows.length) + (rows.length > lim ? ' (laporan cetak memuat semua)' : '');
