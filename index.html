@@ -362,7 +362,7 @@ a.dl .si{width:16px;height:16px}
 .kw .cat{font-size:10px;margin-top:6px;color:#333}
 /* ===== Format cetak: laporan resmi (.lp), kuitansi (.kwp), halaman (.pg) ===== */
 .pg,.pg *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pg{box-sizing:border-box;width:297mm;height:192mm;padding:16mm 14mm 0;position:relative;overflow:hidden;background:#fff;color:#111;
+.pg{box-sizing:border-box;width:297mm;height:184mm;padding:16mm 14mm 0;position:relative;overflow:hidden;background:#fff;color:#111;
   font-family:Arial,"Liberation Sans",Helvetica,sans-serif;break-after:page;page-break-after:always}
 .pgm.pg{height:auto;width:269mm;padding:0;position:absolute;left:-9999px;top:0;visibility:hidden;overflow:visible}
 .pg:last-child{break-after:auto;page-break-after:auto}
@@ -2524,7 +2524,7 @@ function kopHtml(kecUpt, paksaUpt, tigaBaris) {
 function paginasi(html) {
   var host = document.createElement('div'); host.className = 'pgm pg'; host.innerHTML = html; document.body.appendChild(host);
   try {
-    var probe = document.createElement('div'); probe.style.cssText = 'height:164mm;width:1px;position:absolute'; host.appendChild(probe);
+    var probe = document.createElement('div'); probe.style.cssText = 'height:150mm;width:1px;position:absolute'; host.appendChild(probe);
     var avail = probe.offsetHeight - 2; host.removeChild(probe);
     var lp = host.querySelector('.lp'), head = lp.querySelector('.lh'), tbl = lp.querySelector('table'), ttd = lp.querySelector('.ttd-k');
     var fl = lp.getAttribute('data-fl') || '', cg = tbl.querySelector('colgroup').outerHTML, th = tbl.tHead.outerHTML;
