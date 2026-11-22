@@ -1285,10 +1285,8 @@ function keluarLokal() {
 }
 async function keluar() {
   var t = S.token;
-  busy(true);
-  try { await api('api_logout', t); } catch (e) { /* abaikan */ }
-  busy(false);
-  keluarLokal();
+  keluarLokal();   // keluar seketika di layar; pencabutan sesi di server berjalan di latar belakang
+  try { api('api_logout', t).catch(function () { /* abaikan: sesi di server berakhir sendiri */ }); } catch (e) { /* abaikan */ }
 }
 
 /* ================= NAVIGASI ================= */
