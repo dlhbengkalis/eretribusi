@@ -1281,7 +1281,7 @@ async function masukApp(boot) {
   document.body.classList.toggle('peran-petugas', peran === 'PETUGAS');
   $('#btnSet').hidden = peran === 'PETUGAS';
   $('#btnPub').hidden = false;
-  $('#btnKelola').hidden = peran !== 'ADMIN';
+  $('#btnKelola').hidden = peran === 'PETUGAS';
   if (peran === 'PETUGAS') pasangFab();
   go('home');
   setTimeout(function () { if (!S.token) return; prefetch('objek', ['api_objekList', S.token]); if (S.user && S.user.role !== 'PETUGAS') prefetch('mou', ['api_mouList', S.token]); }, 800);
@@ -1383,7 +1383,7 @@ async function pageHome() {
     kartuK('piutang', 'Piutang', rp(d.piutang), nfx(d.piutangObjek) + ' objek belum lunas', d.piutang ? 'red' : '') +
     '<div class="card k"><div class="kh"><span class="kic">' + ico('chart') + '</span><span class="kl">Realisasi pembayaran</span></div><b class="kv2">' + d.realisasi.toString().replace('.', ',') + '%</b><div class="prog"><div style="width:' + Math.min(100, d.realisasi) + '%"></div></div></div>' + '</div>';
 
-  if (!d.bulan && !d.dari) h += '<div class="tcard"><div class="tc-h"><h2>Realisasi per Bulan</h2><div class="ci r">Tahun ' + d.tahun + '</div></div><div class="tw"><table class="t"><tr><th>Bulan</th><th class="r">Target</th><th class="r">Terbayar</th><th class="r">%</th></tr>' +
+  if (!d.bulan && !d.dari) h += '<div class="tcard"><div class="tc-h"><h2>Realisasi per Bulan</h2><div class="ci r">Tahun ' + d.tahun + '</div><button type="button" class="btn" data-tpng="1" style="margin-left:auto">Unduh PNG</button></div><div class="tw"><table class="t"><tr><th>Bulan</th><th class="r">Target</th><th class="r">Terbayar</th><th class="r">%</th></tr>' +
     d.perBulan.map(function (b) {
       var p = persen(b.terbayar, b.target);
       return '<tr><td>' + BLN_PJG[b.bulan - 1] + '</td><td class="r">' + rp(b.target) + '</td><td class="r' + (b.terbayar ? ' g' : ' z') + '">' + rp(b.terbayar) + '</td><td class="r" style="min-width:110px">' + p.toString().replace('.', ',') + '%<div class="prog"><div style="width:' + p + '%"></div></div></td></tr>';
@@ -1411,6 +1411,7 @@ async function pageHome() {
 
   $('#hBody').innerHTML = h;
   $('#hBody').onclick = async function (e) {
+    if (e.target.closest('[data-tpng]')) { unduhTargetPng(d); return; }
     var kp = e.target.closest('[data-kpi]'); if (kp) { detailHome(kp.dataset.kpi, d); return; }
     var g = e.target.closest('[data-go]'); if (g) { var el = $('#' + g.dataset.go); if (el) el.scrollIntoView({ behavior: 'smooth' }); return; }
     var c = e.target.closest('[data-cek]'); if (c) { detailTrx(S.cek[Number(c.dataset.cek)]); return; }
@@ -2758,6 +2759,43 @@ function listPublikasi() {
       (adm ? '<button class="btn sm" data-pbedit="' + esc(x.id) + '">' + ico('pensil') + 'Edit</button><button class="btn sm danger" data-pbhps="' + esc(x.id) + '">🗑 Hapus</button>' : '') + '</div></td></tr>';
   }).join('') : '<tr><td colspan="5" class="empty">' + ((S.pub || []).length ? 'Tidak ada berkas yang cocok.' : 'Belum ada berkas yang dipublikasikan.') + '</td></tr>';
 }
+/** Tabel Target Retribusi per bulan (Target, Terbayar, Sisa, %) digambar ke canvas lalu diunduh sebagai PNG. */
+function unduhTargetPng(d) {
+  var rows = d.perBulan || [], K = 2, W = 1100, pad = 32, rh = 44, top = 150;
+  var H = top + rh * (rows.length + 2) + 60, cv = document.createElement('canvas');
+  cv.width = W * K; cv.height = H * K;
+  var c = cv.getContext('2d'); c.scale(K, K);
+  var F = 'Arial, "Liberation Sans", Helvetica, sans-serif';
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#12362a'; c.textBaseline = 'middle'; c.textAlign = 'left';
+  c.font = '700 22px ' + F; c.fillText(String((S.ref && S.ref.instansi) || 'DINAS LINGKUNGAN HIDUP').toUpperCase(), pad, 40);
+  c.font = '700 26px ' + F; c.fillText('TARGET RETRIBUSI TAHUN ' + d.tahun, pad, 78);
+  c.fillStyle = '#5f6f66'; c.font = '15px ' + F;
+  c.fillText('Target = tarif bulanan seluruh objek · Posisi per ' + tglPanjang(waktuLokal().slice(0, 10)), pad, 108);
+  var col = [pad, 470, 700, 930, 1068], hdr = ['Bulan', 'Target', 'Terbayar', 'Sisa', '%'];
+  var tT = 0, tB = 0;
+  rows.forEach(function (b) { tT += Number(b.target) || 0; tB += Number(b.terbayar) || 0; });
+  function baris(i, v, tebal, bg) {
+    var y = top + i * rh;
+    if (bg) { c.fillStyle = bg; c.fillRect(pad, y, W - 2 * pad, rh); }
+    c.strokeStyle = '#cfdcd4'; c.lineWidth = 1; c.beginPath(); c.moveTo(pad, y + rh); c.lineTo(W - pad, y + rh); c.stroke();
+    c.fillStyle = tebal === 'h' ? '#fff' : '#1b2f27'; c.font = (tebal ? '700 ' : '') + '16px ' + F;
+    v.forEach(function (t, k) { c.textAlign = k === 0 ? 'left' : 'right'; c.fillText(t, k === 0 ? col[0] + 12 : col[k], y + rh / 2 + 1); });
+  }
+  baris(0, hdr, 'h', '#14684d');
+  rows.forEach(function (b, i) {
+    var t = Number(b.target) || 0, r = Number(b.terbayar) || 0;
+    baris(i + 1, [BLN_PJG[b.bulan - 1], rp(t), rp(r), rp(Math.max(0, t - r)), persen(r, t).toString().replace('.', ',') + '%'], false, i % 2 ? '#f3f8f5' : null);
+  });
+  baris(rows.length + 1, ['JUMLAH', rp(tT), rp(tB), rp(Math.max(0, tT - tB)), persen(tB, tT).toString().replace('.', ',') + '%'], true, '#e1f1e8');
+  c.fillStyle = '#5f6f66'; c.font = '13px ' + F; c.textAlign = 'left'; c.fillText('E-Retribusi · Dicetak ' + tglPanjang(waktuLokal().slice(0, 10)), pad, H - 24);
+  cv.toBlob(function (bl) {
+    if (!bl) { toast('Gagal membuat gambar.'); return; }
+    var url = URL.createObjectURL(bl), a = document.createElement('a');
+    a.href = url; a.download = namaBerkas('Target Retribusi ' + d.tahun) + '.png'; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1500);
+  }, 'image/png');
+}
 async function unduhPublikasi(id) {
   var r = await jalan(function () { return api('api_publikasiUnduh', S.token, id); });
   if (!r) return;
@@ -2818,17 +2856,19 @@ var PERAN_INFO = {
   PETUGAS: 'Melihat Objek, Piutang, dan Transaksi, serta mencatat transaksi (foto dan GPS) di kecamatan yang dipilih. Tidak dapat mengubah atau menghapus data, membuka MOU dan Pengaturan, atau mencetak laporan.'
 };
 async function pageAkun() {
-  if (S.user.role !== 'ADMIN') { go('home'); return; }
-  var host = $('#pAkun');
+  if (S.user.role === 'PETUGAS') { go('home'); return; }
+  var oper = S.user.role === 'KECAMATAN', host = $('#pAkun');
   if (!$('#kBody')) {
-    host.innerHTML = kepala('Kelola Akun', '<button class="btn primary" id="kAdd">' + ico('plus') + 'Tambah Akun</button>') +
+    host.innerHTML = kepala(oper ? 'Kelola Akun Petugas' : 'Kelola Akun', '<button class="btn primary" id="kAdd">' + ico('plus') + (oper ? 'Tambah Petugas' : 'Tambah Akun') + '</button>') +
       '<div class="fcard">' + fcari('kQ', 'Cari username, nama, atau kecamatan') +
-      fld('Peran', '<select id="kPeran" aria-label="Peran"><option value="">Semua peran</option>' + Object.keys(PERAN_TXT).map(function (k) { return '<option value="' + k + '">' + PERAN_TXT[k] + '</option>'; }).join('') + '</select>') + '</div>' +
-      '<div class="note" style="margin:0 0 12px">Kata sandi disimpan dalam bentuk terenkripsi sehingga tidak dapat ditampilkan. Admin dapat menetapkan kata sandi baru lewat tombol Edit.</div>' +
+      (oper ? '' : fld('Peran', '<select id="kPeran" aria-label="Peran"><option value="">Semua peran</option>' + Object.keys(PERAN_TXT).map(function (k) { return '<option value="' + k + '">' + PERAN_TXT[k] + '</option>'; }).join('') + '</select>')) + '</div>' +
+      '<div class="note" style="margin:0 0 12px">Kata sandi disimpan dalam bentuk terenkripsi sehingga tidak dapat ditampilkan. ' + (oper ? 'Anda dapat menambah, mengubah, menetapkan kata sandi baru, atau menghapus akun Petugas Lapangan di kecamatan Anda.' : 'Admin dapat menetapkan kata sandi baru lewat tombol Edit.') + '</div>' +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Akun</h2><div class="ci r" id="kInfo"></div></div><div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>Username</th><th>Nama Akun</th><th>Peran</th><th>Wilayah Akses</th><th class="c">Status</th><th>Aksi</th></tr></thead><tbody id="kBody"></tbody></table></div></div>';
     $('#kAdd').onclick = function () { formAkun(null); };
-    $('#kQ').oninput = listAkun; $('#kPeran').onchange = listAkun;
+    $('#kQ').oninput = listAkun; if ($('#kPeran')) $('#kPeran').onchange = listAkun;
     $('#kBody').onclick = function (e) {
+      var h = e.target.closest('[data-akunhps]');
+      if (h) { hapusAkun((S.akun || []).filter(function (a) { return a.kode === h.dataset.akunhps; })[0]); return; }
       var b = e.target.closest('[data-akun]'); if (!b) return;
       formAkun((S.akun || []).filter(function (a) { return a.kode === b.dataset.akun; })[0]);
     };
@@ -2837,7 +2877,7 @@ async function pageAkun() {
   if (!r) return; S.akun = r; listAkun();
 }
 function listAkun() {
-  var q = ($('#kQ').value || '').toLowerCase().trim(), p = $('#kPeran').value;
+  var q = ($('#kQ').value || '').toLowerCase().trim(), p = $('#kPeran') ? $('#kPeran').value : '';
   var rows = (S.akun || []).filter(function (a) {
     return (!p || a.role === p) && (!q || (a.kode + ' ' + a.label + ' ' + (a.kec === '*' ? 'semua kecamatan' : a.kec)).toLowerCase().indexOf(q) >= 0);
   });
@@ -2847,7 +2887,7 @@ function listAkun() {
       '<td data-l="Peran"><span class="badge' + (a.role === 'ADMIN' ? '' : (a.role === 'PETUGAS' ? ' gray' : ' b2')) + '">' + esc(PERAN_TXT[a.role] || a.role) + '</span></td>' +
       '<td data-l="Wilayah Akses" class="w">' + (a.kec === '*' ? 'Semua kecamatan' : esc(a.kec.split(',').join(', '))) + '</td>' +
       '<td data-l="Status" class="c"><span class="badge ' + (a.aktif ? '' : 'red') + '">' + (a.aktif ? 'Aktif' : 'Nonaktif') + '</span></td>' +
-      '<td data-l="Aksi"><div class="aks"><button class="btn sm" data-akun="' + esc(a.kode) + '">' + ico('pensil') + 'Edit</button></div></td></tr>';
+      '<td data-l="Aksi"><div class="aks"><button class="btn sm" data-akun="' + esc(a.kode) + '">' + ico('pensil') + 'Edit</button>' + (a.kode === S.user.kode ? '' : '<button class="btn sm danger" data-akunhps="' + esc(a.kode) + '">Hapus</button>') + '</div></td></tr>';
   }).join('') : '<tr><td colspan="7" class="empty">Tidak ada akun yang cocok.</td></tr>';
 }
 function acakPw() {
@@ -2857,7 +2897,7 @@ function acakPw() {
   return s;
 }
 function formAkun(a) {
-  var baru = !a, a0 = a || { kode: '', label: '', role: 'KECAMATAN', kec: '', aktif: true, email: '' };
+  var oper = S.user.role === 'KECAMATAN', baru = !a, a0 = a || { kode: '', label: '', role: oper ? 'PETUGAS' : 'KECAMATAN', kec: oper && S.ref.kecamatan.length === 1 ? S.ref.kecamatan[0] : '', aktif: true, email: '' };
   var diri = !baru && a0.kode === S.user.kode;
   var L = function (t, req) { return '<label class="lbl">' + t + (req ? ' <i>*</i>' : '') + '</label>'; };
   var pilih = a0.kec === '*' ? [] : String(a0.kec).split(',').map(function (x) { return x.trim(); });
@@ -2868,7 +2908,7 @@ function formAkun(a) {
     (LUPA_ON ? L('Surel pemulihan (opsional)') + '<input id="k_email" type="email" maxlength="120" autocapitalize="none" spellcheck="false" value="' + esc(a0.email || '') + '" placeholder="contoh: nama@bengkaliskab.go.id">' +
     '<div class="note">Dipakai mengirim kode verifikasi lupa kata sandi. Hanya berfungsi untuk akun Admin dan Petugas. Pastikan surel ini milik pemegang akun.</div>' : '') +
     sek('Peran dan Wilayah') +
-    '<div class="g2f"><div>' + L('Peran', 1) + '<select id="k_role"' + (diri ? ' disabled' : '') + '>' + Object.keys(PERAN_TXT).map(function (k) { return '<option value="' + k + '"' + (k === a0.role ? ' selected' : '') + '>' + PERAN_TXT[k] + '</option>'; }).join('') + '</select></div>' +
+    '<div class="g2f"><div>' + L('Peran', 1) + '<select id="k_role"' + (diri || oper ? ' disabled' : '') + '>' + (oper ? ['PETUGAS'] : Object.keys(PERAN_TXT)).map(function (k) { return '<option value="' + k + '"' + (k === a0.role ? ' selected' : '') + '>' + PERAN_TXT[k] + '</option>'; }).join('') + '</select></div>' +
     '<div>' + L('Status') + '<select id="k_aktif"' + (diri ? ' disabled' : '') + '><option value="1"' + (a0.aktif ? ' selected' : '') + '>Aktif</option><option value="0"' + (a0.aktif ? '' : ' selected') + '>Nonaktif</option></select></div></div>' +
     '<div class="note" id="k_info"></div>' +
     '<div id="k_wil">' + L('Wilayah akses (kecamatan)', 1) + '<div class="ckg">' + S.ref.kecamatan.map(function (k) { return '<label><input type="checkbox" name="k_kec" value="' + esc(k) + '"' + (pilih.indexOf(k) >= 0 ? ' checked' : '') + '>' + esc(k) + '</label>'; }).join('') + '</div></div>' +
@@ -2878,7 +2918,7 @@ function formAkun(a) {
     '<div class="note">Catat kata sandi sebelum disimpan. Setelah tersimpan, kata sandi tidak dapat dilihat lagi, hanya dapat diganti.</div>' +
     (diri ? '<div class="note">Ini akun yang sedang Anda pakai: username, peran, dan status dikunci agar Anda tidak terkunci dari aplikasi.</div>' : (!baru ? '<div class="note">Bila akun diubah, dinonaktifkan, atau kata sandinya diganti, pengguna akun itu otomatis keluar dan perlu masuk ulang.</div>' : '')) +
     '<div id="fErr" class="err" hidden></div></div>' + aksiForm(baru ? 'Simpan Akun' : 'Simpan Perubahan', 'k_simpan') + '</form>';
-  modal(baru ? 'Tambah Akun' : 'Ubah Akun', body);
+  modal(oper ? (baru ? 'Tambah Petugas' : 'Ubah Petugas') : (baru ? 'Tambah Akun' : 'Ubah Akun'), body);
   var tampil = function () { var r = $('#k_role').value; $('#k_info').textContent = PERAN_INFO[r] || ''; $('#k_wil').hidden = r === 'ADMIN'; };
   $('#k_role').onchange = tampil; tampil();
   $('#k_acak').onclick = function () { var p = $('#k_pw'); p.value = acakPw(); p.type = 'text'; $('#k_lihat').textContent = 'Sembunyikan'; };
@@ -2887,7 +2927,7 @@ function formAkun(a) {
     e.preventDefault(); formErr('');
     var kec = Array.prototype.map.call(document.querySelectorAll('input[name="k_kec"]:checked'), function (x) { return x.value; });
     var d = { kodeAsal: baru ? '' : a0.kode, kode: diri ? a0.kode : $('#k_kode').value, label: $('#k_label').value,
-      role: diri ? a0.role : $('#k_role').value, aktif: diri ? true : $('#k_aktif').value === '1', kec: kec, password: $('#k_pw').value, email: $('#k_email') ? $('#k_email').value.trim() : '' };
+      role: oper ? 'PETUGAS' : (diri ? a0.role : $('#k_role').value), aktif: diri ? true : $('#k_aktif').value === '1', kec: kec, password: $('#k_pw').value, email: $('#k_email') ? $('#k_email').value.trim() : '' };
     busy(true);
     try {
       await api('api_akunSave', S.token, d);
@@ -2896,6 +2936,19 @@ function formAkun(a) {
   };
 }
 
+function hapusAkun(a) {
+  if (!a) return;
+  modal('Hapus Akun', '<div class="card"><div class="nm">' + esc(a.label) + '</div><div class="id">' + esc(a.kode) + ' · ' + esc(PERAN_TXT[a.role] || a.role) + '</div></div>' +
+    '<div class="err" style="background:var(--ambl);color:var(--amb)">Akun akan dihapus permanen dan pengguna langsung keluar. Riwayat transaksi yang pernah dicatat akun ini tetap tersimpan. Untuk menutup akses sementara, gunakan status Nonaktif lewat tombol Edit.</div>' +
+    '<div id="fErr" class="err" hidden></div><button class="btn danger block" id="hpsYa">Ya, hapus akun</button><button class="btn block" id="hpsBatal">Batal</button>');
+  $('#hpsBatal').onclick = closeModal;
+  $('#hpsYa').onclick = async function () {
+    formErr(''); busy(true);
+    try { await api('api_akunHapus', S.token, a.kode); closeModal(); toast('Akun dihapus.'); }
+    catch (er) { formErr(er.message); busy(false); return; }
+    busy(false); await pageAkun();
+  };
+}
 function akun() {
   modal('Akun', '<div class="card"><div class="nm">' + esc(S.user.label) + '</div><div class="mut">Akses: ' + esc(S.user.kec.join(', ')) + '</div></div>' +
     '<form id="fPw" autocomplete="off"><div class="ttl" style="margin-top:14px">Ganti kata sandi</div>' +
