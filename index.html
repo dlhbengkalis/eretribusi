@@ -1956,6 +1956,9 @@ async function pageTrx() {
         '<div class="fcard">' + fcari('tQ', 'Cari nama, no. bukti, atau kelurahan/desa') +
         fld('Periode', '<select id="tBulan" aria-label="Bulan"><option value="">Semua bulan</option>' + S.ref.periode.map(function (p) { return '<option value="' + p.v + '">' + esc(p.t) + '</option>'; }).join('') + '</select>') +
         fld('Jenis objek', '<select id="tJenis" aria-label="Jenis objek"><option value="">Semua jenis objek</option>' + S.ref.jenis.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('') + '</select>') +
+        (PTG() ? '' : selKec('tKec') + fld('Kelurahan/Desa', '<select id="tKel" aria-label="Kelurahan/Desa"></select>') +
+          fld('Metode', '<select id="tMetode" aria-label="Metode"><option value="">Semua metode</option>' + (S.ref.metode || []).map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select>') +
+          fld('Status', '<select id="tStatus" aria-label="Status"><option value="">Semua status</option><option>Lunas</option><option>Belum Lunas</option></select>')) +
         '</div><div class="kpi" id="tKpi" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div>') +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Transaksi</h2><div class="ci" id="tInfo"></div><div class="tc-a' + (PTG() ? ' tc-lim' : '') + '">' + (PTG() ? limSel('t') + '</div></div><div class="tc-bar">' : '') +
       (S.user.role === 'ADMIN' ? '<button class="btn" id="tRekap">' + ico('chart') + 'Rekap Penerimaan</button>' : '') +
@@ -1963,7 +1966,12 @@ async function pageTrx() {
     if (!PTG()) { siapTabel('#tBody', []); pasangUrut('#tBody', 'trx', PETA_TRX, listTrx); }
     pasangLim('t', listTrx);
     if (PTG()) { pasangPeriodePtg('t', function () { S.lim.t = 100; pageTrx(); }); }
-    else { $('#tBulan').value = S.ref.periodeIni; $('#tBulan').onchange = pageTrx; $('#tJenis').onchange = pageTrx; }
+    else {
+      $('#tBulan').value = S.ref.periodeIni; $('#tBulan').onchange = pageTrx; $('#tJenis').onchange = pageTrx;
+      ['tMetode', 'tStatus', 'tKel'].forEach(function (i) { $('#' + i).onchange = pageTrx; });
+      if ($('#tKec')) $('#tKec').onchange = function () { isiKelTrx(); pageTrx(); };
+      isiKelTrx(); if (!(S.objek || []).length) muatObjekCepat().then(isiKelTrx);
+    }
     var tt; $('#tQ').oninput = function () { clearTimeout(tt); tt = setTimeout(function () { if (PTG()) S.lim.t = 100; pageTrx(); }, 450); };
     $('#tCetak').onclick = cetakTrxFilter; $('#tCetakMgg').onclick = modalLaporanMgg; if ($('#tRekap')) $('#tRekap').onclick = modalRekap;
     $('#tAdd').onclick = async function () { if (await muatObjekCepat()) formTrx(null); };
@@ -1973,12 +1981,18 @@ async function pageTrx() {
       if (b.dataset.det) detailTrx(t); else if (b.dataset.hps) hapusTrx(t); else cetakKwitansi(t);
     };
   }
-  var f = PTG() ? { bulan: '', jenis: '', dari: bacaPeriodePtg('t').dari, sampai: bacaPeriodePtg('t').sampai, q: $('#tQ').value } : { bulan: $('#tBulan').value, jenis: $('#tJenis').value, q: $('#tQ').value };
+  var f = PTG() ? { bulan: '', jenis: '', dari: bacaPeriodePtg('t').dari, sampai: bacaPeriodePtg('t').sampai, q: $('#tQ').value } : { bulan: $('#tBulan').value, jenis: $('#tJenis').value, kec: $('#tKec') ? $('#tKec').value : '', kel: $('#tKel').value, metode: $('#tMetode').value, status: $('#tStatus').value, q: $('#tQ').value };
   if (PTG()) { if (!f.dari || !f.sampai) return; if (f.dari > f.sampai) { toast('Tanggal awal tidak boleh melebihi tanggal akhir.', true); return; } }
   var r = await ambilSWR('trx|' + JSON.stringify(f), function () { return api('api_trxList', S.token, f); }, pageTrx, 'trx');
   if (!r) return; S.trx = r;
   listTrx();
   if (!(S.objek || []).length && r.some(function (t) { return !t.kel; })) muatObjekCepat().then(function () { if (S.page === 'trx') listTrx(); });
+}
+/** Pilihan kelurahan/desa pada filter Transaksi (mengikuti kecamatan terpilih), berdasarkan daftar objek. */
+function isiKelTrx() {
+  if (!$('#tKel')) return;
+  var kec = $('#tKec') ? $('#tKec').value : '';
+  isiOpsi('#tKel', kelUrut((S.objek || []).filter(function (o) { return !kec || o.kec === kec; })), 'Semua kelurahan/desa');
 }
 function hapusTrx(t) {
   modal('Hapus Transaksi', '<div class="card"><div class="nm">' + esc(t.nama) + '</div><div class="id">' + esc(t.noBukti) + ' · ' + tglID(t.tanggal) + ' · ' + esc(periodeLabel(t.periode)) + ' · Diterima ' + rp(t.jumlah) + '</div></div>' +
@@ -2032,13 +2046,18 @@ function listTrx() {
 }
 async function cetakTrxFilter() {
   var w = bukaCetak(), bulan = $('#tBulan') ? $('#tBulan').value : '', jenis = $('#tJenis') ? $('#tJenis').value : '', q = $('#tQ').value.trim();
+  var kec = $('#tKec') ? $('#tKec').value : '', kel = $('#tKel') ? $('#tKel').value : '', met = $('#tMetode') ? $('#tMetode').value : '', sts = $('#tStatus') ? $('#tStatus').value : '';
   busy(true);
   try {
-    var rows = await api('api_trxLaporan', S.token, { bulan: bulan, jenis: jenis, q: q });
+    var rows = await api('api_trxLaporan', S.token, { bulan: bulan, jenis: jenis, q: q, kec: kec, kel: kel, metode: met, status: sts });
     if (!rows.length) { toast('Tidak ada transaksi pada filter ini.', true); if (w) w.close(); return; }
     var nmBln = bulan ? BLN_PJG[Number(bulan.slice(5)) - 1] + (bulan.slice(0, 4) !== String(st('tahunAnggaran')) ? ' ' + bulan.slice(0, 4) : '') : '';
     var ket = [bulan ? 'Bulan ' + nmBln : 'Semua Bulan'];
     if (jenis) ket.push('Jenis ' + jenis);
+    if (kec) ket.push('Kecamatan ' + kec);
+    if (kel) ket.push('Kelurahan/Desa ' + kelPendek(kel));
+    if (met) ket.push('Metode ' + met);
+    if (sts) ket.push('Status ' + sts);
     if (q) ket.push('Pencarian “' + q + '”');
     printDoc(htmlLaporanTrx(rows, ket, ''), 'A4 landscape', 'Laporan Transaksi Retribusi - ' + (bulan ? periodeLabel(bulan) : 'Semua bulan') + (jenis ? ' - ' + jenis : '') + ' - ' + wilayahNama(), w);
   } catch (e) { toast(e.message, true); if (w) w.close(); } finally { busy(false); }
