@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "id.dlhbengkalis.eretribusi.twa",
+        "sha256_cert_fingerprints": ["6F:C7:B0:96:14:08:87:9D:ED:71:3D:57:17:D6:AB:1C:FE:60:F4:17:56:E0:C5:3A:3E:47:3C:6A:5C:27:A4:6E"]
+      }
+    }]
