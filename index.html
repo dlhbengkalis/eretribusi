@@ -535,8 +535,10 @@ body.peran-petugas table.tfull tr.pr td.pr-l{flex:1 1 0;min-width:0;font-size:14
 body.peran-petugas table.tfull tr.pr td.pr-r{flex:0 0 auto;text-align:right!important;white-space:nowrap;font-size:14.5px}
 body.peran-petugas table.tfull tr.pr td.mrh,body.peran-petugas table.tfull tr.pr td.mrh b{color:var(--red)}
 body.peran-petugas tr.pr .mut{font-size:12.5px;margin-top:2px}
-body.peran-petugas table.tfull tr.pr td.pr-a{flex:1 0 100%;display:flex!important;gap:8px;justify-content:flex-end;padding-top:4px;border-top:1px dashed var(--line)}
-body.peran-petugas table.tfull tr.pr td.pr-a .btn{min-height:34px;padding:6px 12px}
+body.peran-petugas table.tfull tr.pr td.pr-k{flex:0 0 auto;display:flex!important;flex-direction:column;gap:6px;align-items:flex-start}
+body.peran-petugas table.tfull tr.pr td.pr-k .pr-b{display:flex;gap:6px}
+body.peran-petugas table.tfull tr.pr td.pr-k .btn{min-height:34px;padding:6px 10px}
+body.peran-petugas table.tfull tr.pr td.pr-k .pr-j{font-size:15px}
 .pr-n{display:flex;gap:7px;align-items:flex-start}
 .pr-n .ck{flex:0 0 18px;font-weight:800;line-height:1.35}
 .pr-n .ck.ok{color:#1a7f4b}.pr-n .ck.no{color:#b8c4bc}
@@ -2054,10 +2056,11 @@ function listTrx() {
   if (PTG()) {
     $('#tBody').innerHTML = r.length ? r.slice(0, batas('t', r.length)).map(function (t) {
       var ok = t.status === 'Lunas';
-      return '<tr class="pr" data-det="' + esc(t.id) + '"><td class="pr-l"><div class="pr-n"><span class="ck ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span><b>' + esc(t.nama) + '</b></div></td>' +
-        '<td class="pr-r"><b>' + nf(t.jumlah) + '</b><div class="mut">' + tglID(t.tanggal) + '</div></td>' +
-        (t.verif === 'Sudah Dicek' ? '' : '<td class="pr-a"><button class="btn sm" data-edt="' + esc(t.id) + '">✎ Edit</button><button class="btn sm danger" data-hps="' + esc(t.id) + '">🗑 Hapus</button></td>') + '</tr>';
-    }).join('') + (r.length > batas('t', r.length) ? moreRow('t', r.length - batas('t', r.length)) : '') : '<tr><td class="empty">Belum ada transaksi pada filter ini.</td></tr>';
+      return '<tr class="pr" data-det="' + esc(t.id) + '"><td class="pr-k">' +
+        (t.verif === 'Sudah Dicek' ? '' : '<div class="pr-b"><button class="btn sm" data-edt="' + esc(t.id) + '">✎ Edit</button><button class="btn sm danger" data-hps="' + esc(t.id) + '">🗑 Hapus</button></div>') +
+        '<b class="pr-j">' + nf(t.jumlah) + '</b></td>' +
+        '<td class="pr-l"><div class="pr-n"><span class="ck ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span><div><b>' + esc(t.nama) + '</b><div class="mut">' + tglID(t.tanggal) + '</div></div></div></td></tr>';
+}).join('') + (r.length > batas('t', r.length) ? moreRow('t', r.length - batas('t', r.length)) : '') : '<tr><td class="empty">Belum ada transaksi pada filter ini.</td></tr>';
     return;
   }
   $('#tBody').innerHTML = r.length ? r.slice(0, batas('t', r.length)).map(function (t, i) {
