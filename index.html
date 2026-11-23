@@ -2692,12 +2692,11 @@ async function pageSet() {
   $('#pSet').innerHTML = '<div class="ph"><div><h1>Pengaturan</h1><div class="ph-s">' +
     (adm ? 'Pengaturan Admin menjadi nilai dasar bagi semua kecamatan. Setiap Operator Kecamatan dapat menyesuaikan seluruh isian untuk wilayahnya sendiri.'
          : 'Isian di bawah berlaku untuk akun <b>' + esc(S.user.label) + '</b> dan dipakai di semua laporan serta dokumen MOU akun ini. Mengosongkan isian = kembali ke nilai dasar Admin.') +
-    '</div></div><div class="ph-a"><button class="btn" id="stKemb" type="button">' + ico('kiri') + 'Kembali</button></div></div>' +
+    '</div></div></div>' +
     '<form id="fSet" autocomplete="off">' + g.map(function (k) {
       return '<div class="tcard"><div class="tc-h"><h2>' + esc(k.judul) + '</h2></div><div class="tw"><table class="t stg"><thead><tr><th>Pengaturan</th><th>Isian</th><th>Keterangan</th></tr></thead><tbody>' +
         k.item.map(function (i) { return '<tr><td data-l="Pengaturan">' + esc(i.label) + '</td><td data-l="Isian">' + kontrol(i) + '</td><td data-l="Keterangan">' + esc(i.ket) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
     }).join('') + '<div id="fErr" class="err" hidden></div><div class="stf"><button class="btn primary" type="submit">Simpan Pengaturan</button></div></form>';
-  $('#stKemb').onclick = function () { go('home'); };
   $('#fSet').onsubmit = async function (e) {
     e.preventDefault(); formErr('');
     var d = {};
