@@ -1437,13 +1437,13 @@ async function pageObjek() {
   var host = $('#pObjek');
   if (!$('#oQ')) {
     host.innerHTML = kepala('Objek Retribusi', '<button class="btn" id="oCetak">' + ico('doc') + 'Cetak Laporan</button><button class="btn primary" id="oAdd">' + ico('plus') + 'Tambah Objek</button>') +
-      '<div class="fcard">' + fcari('oQ', PTG() ? 'Cari nama, ID, atau alamat' : 'Cari nama, ID, alamat, atau kelurahan/desa') + selKec('oKec') +
+      '<div class="fcard">' + fcari('oQ', 'Cari nama, ID, atau alamat') + selKec('oKec') +
       fld('Jenis objek', '<select id="oJenis"><option value="">Semua jenis objek</option>' + S.ref.jenis.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('') + '</select>') +
-      (PTG() ? fld('Kelurahan/Desa', '<select id="oKel"></select>') : fld('Status MOU', '<select id="oMou"><option value="">Semua status MOU</option>' + Object.keys(S.ref.statusMou).map(function (k) { return '<option>' + esc(S.ref.statusMou[k]) + '</option>'; }).join('') + '</select>')) +
+      fld('Kelurahan/Desa', '<select id="oKel"></select>') + (PTG() ? '' : fld('Status MOU', '<select id="oMou"><option value="">Semua status MOU</option>' + Object.keys(S.ref.statusMou).map(function (k) { return '<option>' + esc(S.ref.statusMou[k]) + '</option>'; }).join('') + '</select>')) +
       '</div>' +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Objek</h2><div class="ci r" id="oInfo"></div>' + limSel('o') + '</div><div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>ID Objek</th><th>Nama Usaha/Kegiatan</th><th>Jenis</th><th>Kelurahan/Desa</th><th>Kecamatan</th><th>Status Objek</th><th class="c">Status MOU</th><th>Status Penandatanganan</th><th>Metode</th><th class="c">Tarif (Rp/bln)</th><th>Penanggung Jawab</th><th>Jabatan</th><th>NIK</th><th>No HP</th><th>Aksi</th></tr></thead><tbody id="oBody"></tbody></table></div></div>';
-    (PTG() ? ['oQ', 'oKel', 'oJenis'] : ['oQ', 'oMou', 'oJenis']).forEach(function (i) { $('#' + i).oninput = resetObjek; $('#' + i).onchange = resetObjek; });
-    if ($('#oKec')) $('#oKec').onchange = resetObjek;
+    (PTG() ? ['oQ', 'oKel', 'oJenis'] : ['oQ', 'oKel', 'oMou', 'oJenis']).forEach(function (i) { $('#' + i).oninput = resetObjek; $('#' + i).onchange = resetObjek; });
+    if ($('#oKec')) $('#oKec').onchange = function () { isiKelObjek(); resetObjek(); };
     $('#oAdd').onclick = function () { formObjek(null); };
     $('#oCetak').onclick = cetakObjek;
     if (!PTG()) siapTabel('#oBody', ['Status Objek', 'Penanggung Jawab', 'Jabatan', 'NIK', 'No HP', 'Status Penandatanganan'].concat(kecSembunyi() ? ['Kecamatan'] : []).concat(PTG() ? ['ID Objek', 'Status MOU', 'Aksi'] : []));
@@ -1458,7 +1458,14 @@ async function pageObjek() {
     };
   }
   var ro = await ambilSWR('objek', function () { return api('api_objekList', S.token); }, pageObjek, 'objek');
-  if (ro) { S.objek = ro; if ($('#oKel')) isiOpsi('#oKel', kelUrut(PTG() ? ro.filter(function (o) { return o.tarifEfektif > 0; }) : ro), 'Semua kelurahan/desa'); resetObjek(); }
+  if (ro) { S.objek = ro; isiKelObjek(); resetObjek(); }
+}
+/** Pilihan kelurahan/desa mengikuti kecamatan yang dipilih (bila ada filter kecamatan). */
+function isiKelObjek() {
+  if (!$('#oKel')) return;
+  var kec = $('#oKec') ? $('#oKec').value : '', ro = S.objek.filter(function (o) { return (!PTG() || o.tarifEfektif > 0) && (!kec || o.kec === kec); }), v = $('#oKel').value;
+  isiOpsi('#oKel', kelUrut(ro), 'Semua kelurahan/desa');
+  if (v && kelUrut(ro).indexOf(v) >= 0) $('#oKel').value = v;
 }
 function resetObjek() { if (PTG()) S.lim.o = 100; listObjek(); }
 function filterObjek() {
@@ -1518,6 +1525,7 @@ function cetakObjek() {
   if (!rows.length) { toast('Tidak ada data untuk dicetak.', true); return; }
   var ex = kecInfo($('#oKec') && $('#oKec').value);
   if ($('#oJenis').value) ex.push('Jenis ' + $('#oJenis').value);
+  if ($('#oKel') && $('#oKel').value) ex.push('Kelurahan/Desa ' + kelPendek($('#oKel').value));
   if ($('#oMou') && $('#oMou').value) ex.push($('#oMou').value);
   if ($('#oQ').value.trim()) ex.push('Pencarian “' + $('#oQ').value.trim() + '”');
   var multi = !kecSembunyiCetak();
