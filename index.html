@@ -335,7 +335,7 @@ th.srt.desc::after{content:' ▼';opacity:1;color:var(--g)}
 a.dl{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--g)}
 a.dl:hover{background:var(--gl)}
 /* Peran Petugas Lapangan: sembunyikan tombol ubah/hapus/cetak (server juga menolak) */
-body.peran-petugas #oAdd,body.peran-petugas #oCetak,body.peran-petugas #pCetak,body.peran-petugas #tCetak,body.peran-petugas #tCetakMgg,body.peran-petugas #tRekap,body.peran-petugas [data-edit],body.peran-petugas [data-del],body.peran-petugas [data-hps],body.peran-petugas .nav button[data-go=mou],body.peran-petugas #btnSet{display:none!important}
+body.peran-petugas #oAdd,body.peran-petugas #oCetak,body.peran-petugas #pCetak,body.peran-petugas #tCetak,body.peran-petugas #tCetakMgg,body.peran-petugas #tRekap,body.peran-petugas [data-edit],body.peran-petugas [data-del],body.peran-petugas .nav button[data-go=mou],body.peran-petugas #btnSet{display:none!important}
 .ckg{display:flex;flex-wrap:wrap;gap:8px 18px;margin:4px 0 6px}
 .ckg label{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ttl);font-weight:500}
 .ckg input{width:auto;min-height:0;padding:0;accent-color:var(--g)}
@@ -527,14 +527,16 @@ body.peran-petugas .tc-h{flex-wrap:nowrap}
 body.peran-petugas .tc-h select.lim,body.peran-petugas .tc-h .tc-lim{margin-left:auto}
 body.peran-petugas .tc-bar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
 body.peran-petugas table.tfull thead{display:none}
-body.peran-petugas table.tfull tr.pr{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+body.peran-petugas table.tfull tr.pr{flex-wrap:wrap;display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
 body.peran-petugas table.tfull tr.pr:active{background:#f1f8f4}
 body.peran-petugas table.tfull tr.pr td{display:block;width:auto!important;padding:0;border:0;background:transparent!important;text-align:left!important}
 body.peran-petugas table.tfull tr.pr td::before{display:none!important}
-body.peran-petugas table.tfull tr.pr td.pr-l{flex:1 1 auto;min-width:0;font-size:14.5px}
+body.peran-petugas table.tfull tr.pr td.pr-l{flex:1 1 0;min-width:0;font-size:14.5px}
 body.peran-petugas table.tfull tr.pr td.pr-r{flex:0 0 auto;text-align:right!important;white-space:nowrap;font-size:14.5px}
 body.peran-petugas table.tfull tr.pr td.mrh,body.peran-petugas table.tfull tr.pr td.mrh b{color:var(--red)}
 body.peran-petugas tr.pr .mut{font-size:12.5px;margin-top:2px}
+body.peran-petugas table.tfull tr.pr td.pr-a{flex:1 0 100%;display:flex!important;gap:8px;justify-content:flex-end;padding-top:4px;border-top:1px dashed var(--line)}
+body.peran-petugas table.tfull tr.pr td.pr-a .btn{min-height:34px;padding:6px 12px}
 .pr-n{display:flex;gap:7px;align-items:flex-start}
 .pr-n .ck{flex:0 0 18px;font-weight:800;line-height:1.35}
 .pr-n .ck.ok{color:#1a7f4b}.pr-n .ck.no{color:#b8c4bc}
@@ -1978,8 +1980,8 @@ async function pageTrx() {
     $('#tAdd').onclick = async function () { if (await muatObjekCepat()) formTrx(null); };
     $('#tBody').onclick = function (e) {
       var b = e.target.closest('button, tr.pr'); if (!b) return;
-      var t = S.trx.filter(function (x) { return x.id === (b.dataset.det || b.dataset.kw || b.dataset.hps); })[0]; if (!t) return;
-      if (b.dataset.det) detailTrx(t); else if (b.dataset.hps) hapusTrx(t); else cetakKwitansi(t);
+      var t = S.trx.filter(function (x) { return x.id === (b.dataset.det || b.dataset.kw || b.dataset.hps || b.dataset.edt); })[0]; if (!t) return;
+      if (b.dataset.det) detailTrx(t); else if (b.dataset.edt) formEditTrx(t); else if (b.dataset.hps) hapusTrx(t); else cetakKwitansi(t);
     };
   }
   var f = PTG() ? { bulan: '', jenis: '', dari: bacaPeriodePtg('t').dari, sampai: bacaPeriodePtg('t').sampai, q: $('#tQ').value } : { bulan: $('#tBulan').value, jenis: $('#tJenis').value, kec: $('#tKec') ? $('#tKec').value : '', kel: $('#tKel').value, metode: $('#tMetode').value, status: $('#tStatus').value, q: $('#tQ').value };
@@ -2010,6 +2012,29 @@ function hapusTrx(t) {
     } catch (e) { formErr(e.message); } finally { busy(false); }
   };
 }
+function formEditTrx(t) {
+  var r = S.ref, L = function (x, req) { return '<label class="lbl">' + x + (req ? ' <i>*</i>' : '') + '</label>'; };
+  modal('Ubah Transaksi', '<form id="fEdt" autocomplete="off"><div class="mb"><div class="card"><div class="nm">' + esc(t.nama) + '</div><div class="id">' + esc(t.id) + ' · Tarif ' + rp(t.tarif) + '</div></div>' +
+    '<div class="g4"><div>' + L('Bulan Periode', 1) + selectPeriode('e_per', t.periode) + '</div>' +
+    '<div>' + L('Tanggal Transaksi', 1) + '<input id="e_tgl" type="date" value="' + esc(t.tanggal) + '" max="' + r.hariIni + '"></div>' +
+    '<div>' + L('No. Bukti / Kuitansi', 1) + '<input id="e_bukti" maxlength="60" value="' + esc(t.noBukti) + '"></div>' +
+    '<div>' + L('Jumlah Diterima (Rp)', 1) + '<input id="e_jml" inputmode="numeric" value="' + esc(new Intl.NumberFormat('id-ID').format(t.jumlah)) + '"></div>' +
+    '<div>' + L('Metode Pembayaran', 1) + '<select id="e_met">' + r.metode.map(function (m) { return '<option' + (m === t.metode ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select></div></div>' +
+    '<div class="note">Nama usaha tidak dapat diganti. Bila salah memilih usaha, hapus transaksi lalu catat ulang. Status dan selisih dihitung ulang otomatis.</div>' +
+    '<div id="fErr" class="err" hidden></div></div>' + aksiForm('Simpan Perubahan', 'e_simpan') + '</form>');
+  $('#e_jml').oninput = function () { var v = num(this.value); this.value = v ? new Intl.NumberFormat('id-ID').format(v) : ''; };
+  $('#fEdt').onsubmit = async function (e) {
+    e.preventDefault(); formErr('');
+    if (!num($('#e_jml').value)) { formErr('Jumlah Diterima wajib diisi.'); return; }
+    var d = { tanggal: $('#e_tgl').value, noBukti: $('#e_bukti').value, periode: $('#e_per').value, jumlah: num($('#e_jml').value), metode: $('#e_met').value };
+    $('#e_simpan').disabled = true; busy(true);
+    try {
+      await api('api_trxEdit', S.token, t.id, d);
+      closeModal(); toast('Transaksi diperbarui.');
+      if (S.page === 'trx') pageTrx(); else if (!$('#pHome').hidden) pageHome();
+    } catch (x) { formErr(x.message); $('#e_simpan').disabled = false; } finally { busy(false); }
+  };
+}
 function listTrx() {
   var r = urutkan(S.trx, 'trx', PETA_TRX), nf = function (n) { return new Intl.NumberFormat('id-ID').format(n); };
   var total = r.reduce(function (a, t) { return a + t.jumlah; }, 0);
@@ -2030,7 +2055,8 @@ function listTrx() {
     $('#tBody').innerHTML = r.length ? r.slice(0, batas('t', r.length)).map(function (t) {
       var ok = t.status === 'Lunas';
       return '<tr class="pr" data-det="' + esc(t.id) + '"><td class="pr-l"><div class="pr-n"><span class="ck ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span><b>' + esc(t.nama) + '</b></div></td>' +
-        '<td class="pr-r"><b>' + nf(t.jumlah) + '</b><div class="mut">' + tglID(t.tanggal) + '</div></td></tr>';
+        '<td class="pr-r"><b>' + nf(t.jumlah) + '</b><div class="mut">' + tglID(t.tanggal) + '</div></td>' +
+        (t.verif === 'Sudah Dicek' ? '' : '<td class="pr-a"><button class="btn sm" data-edt="' + esc(t.id) + '">✎ Edit</button><button class="btn sm danger" data-hps="' + esc(t.id) + '">🗑 Hapus</button></td>') + '</tr>';
     }).join('') + (r.length > batas('t', r.length) ? moreRow('t', r.length - batas('t', r.length)) : '') : '<tr><td class="empty">Belum ada transaksi pada filter ini.</td></tr>';
     return;
   }
@@ -2041,7 +2067,7 @@ function listTrx() {
       '<td data-l="Periode" class="nw">' + esc(periodeLabel(t.periode)) + '</td>' +
       '<td data-l="Tarif" class="r nw">' + nf(t.tarif) + '</td><td data-l="Diterima" class="r nw"><b>' + nf(t.jumlah) + '</b></td><td data-l="Selisih" class="r nw">' + signed(t.selisih) + '</td>' +
       '<td data-l="Metode">' + esc(t.metode) + '</td><td data-l="Status"><span class="badge ' + (t.status === 'Lunas' ? '' : 'red') + '">' + esc(t.status) + '</span></td>' +
-      '<td data-l="Aksi"><div class="aks"><button class="btn sm" data-det="' + esc(t.id) + '">Detail</button><button class="btn sm" data-kw="' + esc(t.id) + '">🖨 Kwitansi</button><button class="btn sm danger" data-hps="' + esc(t.id) + '">🗑 Hapus</button></div></td></tr>';
+      '<td data-l="Aksi"><div class="aks"><button class="btn sm" data-det="' + esc(t.id) + '">Detail</button><button class="btn sm" data-kw="' + esc(t.id) + '">🖨 Kwitansi</button><button class="btn sm" data-edt="' + esc(t.id) + '">✎ Edit</button><button class="btn sm danger" data-hps="' + esc(t.id) + '">🗑 Hapus</button></div></td></tr>';
   }).join('') : '<tr><td colspan="11" class="empty">Belum ada transaksi pada filter ini.</td></tr>';
   trimBody('#tBody');
 }
@@ -2879,7 +2905,7 @@ var PERAN_TXT = { ADMIN: 'Admin DLH', KECAMATAN: 'Operator Kecamatan', PETUGAS: 
 var PERAN_INFO = {
   ADMIN: 'Semua menu dan semua kecamatan, termasuk Pengaturan dan Kelola Akun.',
   KECAMATAN: 'Objek, MOU, Transaksi, Piutang, laporan cetak, dan Pengaturan UPT untuk kecamatan yang dipilih.',
-  PETUGAS: 'Melihat Objek, Piutang, dan Transaksi, serta mencatat transaksi (dengan foto bukti) di kecamatan yang dipilih. Tidak dapat mengubah atau menghapus data, membuka MOU dan Pengaturan, atau mencetak laporan.'
+  PETUGAS: 'Melihat Objek, Piutang, dan Transaksi, serta mencatat transaksi (dengan foto bukti) di kecamatan yang dipilih. Dapat mengubah/menghapus transaksi yang dicatatnya sendiri selama belum divalidasi Admin. Tidak dapat mengubah data lain, membuka MOU dan Pengaturan, atau mencetak laporan.'
 };
 async function pageAkun() {
   if (S.user.role === 'PETUGAS') { go('home'); return; }
