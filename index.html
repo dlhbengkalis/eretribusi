@@ -1410,7 +1410,7 @@ async function pageHome() {
       '<div style="margin-top:6px">' + t.alasan.map(function (a) { return '<span class="badge amb" style="margin:0 4px 4px 0;white-space:normal">' + esc(a) + '</span>'; }).join('') + '</div></div>';
   }).join('') + '</div>' + (d.cekTotal > d.cek.length ? '<p class="note">Menampilkan ' + d.cek.length + ' terbaru.</p>' : '')
     : '<div class="card empty">Tidak ada pembayaran yang perlu dicek.</div>';
-  if (!ptg) h += '<p class="note">Penanda: lokasi &gt; 300 m dari titik acuan objek, tanggal foto berbeda dari tanggal transaksi, tanpa GPS, atau kelebihan bayar. Admin DLH dapat menandai “Sudah Dicek” dari detail transaksi.</p>';
+  if (!ptg) h += '<p class="note">Penanda: lokasi &gt; 300 m dari titik acuan objek, tanggal foto berbeda dari tanggal transaksi, atau kelebihan bayar. Admin DLH dapat menandai “Sudah Dicek” dari detail transaksi.</p>';
 
   $('#hBody').innerHTML = h;
   $('#hBody').onclick = async function (e) {
@@ -2169,13 +2169,11 @@ function formTrx(pref, periodePref) {
     '<div>' + L('Selisih (+/−) (otomatis)') + '<input id="t_sel" readonly></div>' +
     '<div>' + L('Metode Pembayaran', 1) + '<select id="t_met">' + r.metode.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select></div>' +
     '<div>' + L('Status (otomatis)') + '<div id="t_stat" style="padding-top:7px"><span class="badge gray">—</span></div></div></div>' +
-    sek('Bukti dan Lokasi') +
+    sek('Bukti Pembayaran') +
     '<div class="g2f"><div>' + L('Foto Bukti (opsional)') + '<div class="foto"><input type="file" id="t_file" accept="image/*" capture="environment" hidden>' +
-    '<button type="button" class="btn sm" id="t_btnFoto">' + ico('kamera') + 'Ambil Foto</button><div class="note">Foto diberi cap waktu, nama usaha, dan koordinat.</div><div id="t_prevFoto"></div></div></div>' +
-    '<div>' + L('Lokasi GPS (otomatis)') + '<div id="t_gps" class="gps"></div></div></div>' +
+    '<button type="button" class="btn sm" id="t_btnFoto">' + ico('kamera') + 'Ambil Foto</button><div class="note">Foto diberi cap waktu dan nama usaha.</div><div id="t_prevFoto"></div></div></div></div>' +
     '<div id="fErr" class="err" hidden></div></div>' + aksiForm('Simpan Transaksi', 't_simpan') + '</form>';
   modal('Catat Transaksi', body, true);
-  mulaiGps();
 
   function hitung() {
     var j = num($('#t_jml').value);
@@ -2211,7 +2209,6 @@ function formTrx(pref, periodePref) {
 
   $('#t_btnFoto').onclick = function () {
     if (!sel) { toast('Pilih Nama Usaha/Kegiatan terlebih dahulu.', true); return; }
-    if (r.gpsWajib && !S.gps) { toast('Tunggu lokasi GPS terdeteksi dahulu.', true); return; }
     $('#t_file').click();
   };
   $('#t_file').onchange = async function () {
@@ -2230,7 +2227,6 @@ function formTrx(pref, periodePref) {
     var er = [];
     if (!sel) er.push('Pilih Nama Usaha/Kegiatan dari daftar.');
     if (!num($('#t_jml').value)) er.push('Jumlah Diterima wajib diisi.');
-    if (r.gpsWajib && !S.gps) er.push('Lokasi GPS belum terdeteksi.');
     if (er.length) { formErr(er.join('\n')); return; }
     var g = S.gps || {};
     var d = { tanggal: $('#t_tgl').value, noBukti: $('#t_bukti').value, idObjek: sel.id, periode: $('#t_per').value, jumlah: num($('#t_jml').value),
@@ -2883,7 +2879,7 @@ var PERAN_TXT = { ADMIN: 'Admin DLH', KECAMATAN: 'Operator Kecamatan', PETUGAS: 
 var PERAN_INFO = {
   ADMIN: 'Semua menu dan semua kecamatan, termasuk Pengaturan dan Kelola Akun.',
   KECAMATAN: 'Objek, MOU, Transaksi, Piutang, laporan cetak, dan Pengaturan UPT untuk kecamatan yang dipilih.',
-  PETUGAS: 'Melihat Objek, Piutang, dan Transaksi, serta mencatat transaksi (foto dan GPS) di kecamatan yang dipilih. Tidak dapat mengubah atau menghapus data, membuka MOU dan Pengaturan, atau mencetak laporan.'
+  PETUGAS: 'Melihat Objek, Piutang, dan Transaksi, serta mencatat transaksi (dengan foto bukti) di kecamatan yang dipilih. Tidak dapat mengubah atau menghapus data, membuka MOU dan Pengaturan, atau mencetak laporan.'
 };
 async function pageAkun() {
   if (S.user.role === 'PETUGAS') { go('home'); return; }
