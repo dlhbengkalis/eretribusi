@@ -1951,7 +1951,9 @@ async function formMou(m) {
 async function pageTrx() {
   var host = $('#pTrx');
   if (!$('#tAdd')) {
-    host.innerHTML = kepala('Transaksi Retribusi', '<button class="btn primary" id="tAdd">' + ico('plus') + (PTG() ? 'Tambah' : 'Tambah Transaksi') + '</button>') +
+    var bCetak = (S.user.role === 'ADMIN' ? '<button class="btn" id="tRekap">' + ico('chart') + 'Rekap Penerimaan</button>' : '') +
+      '<button class="btn" id="tCetak">' + ico('doc') + 'Cetak (sesuai filter)</button><button class="btn" id="tCetakMgg">' + ico('doc') + 'Cetak Mingguan</button>';
+    host.innerHTML = kepala('Transaksi Retribusi', (PTG() ? '' : bCetak) + '<button class="btn primary" id="tAdd">' + ico('plus') + (PTG() ? 'Tambah' : 'Tambah Transaksi') + '</button>') +
       (PTG() ? pilPeriodePtg('t') + '<div class="kpi" id="tKpi"></div><div class="fcard">' + fcari('tQ', 'Cari transaksi') + '</div>' :
         '<div class="fcard">' + fcari('tQ', 'Cari nama, no. bukti, atau kelurahan/desa') +
         fld('Periode', '<select id="tBulan" aria-label="Bulan"><option value="">Semua bulan</option>' + S.ref.periode.map(function (p) { return '<option value="' + p.v + '">' + esc(p.t) + '</option>'; }).join('') + '</select>') +
@@ -1961,8 +1963,7 @@ async function pageTrx() {
           fld('Status', '<select id="tStatus" aria-label="Status"><option value="">Semua status</option><option>Lunas</option><option>Belum Lunas</option></select>')) +
         '</div><div class="kpi" id="tKpi" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div>') +
       '<div class="tcard"><div class="tc-h"><h2>Daftar Transaksi</h2><div class="ci" id="tInfo"></div><div class="tc-a' + (PTG() ? ' tc-lim' : '') + '">' + (PTG() ? limSel('t') + '</div></div><div class="tc-bar">' : '') +
-      (S.user.role === 'ADMIN' ? '<button class="btn" id="tRekap">' + ico('chart') + 'Rekap Penerimaan</button>' : '') +
-      '<button class="btn" id="tCetak">' + ico('doc') + 'Cetak (sesuai filter)</button><button class="btn" id="tCetakMgg">' + ico('doc') + 'Cetak Mingguan</button>' + (PTG() ? '' : limSel('t')) + '</div>' + (PTG() ? '' : '</div>') + '<div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>Tanggal</th><th>No Bukti / ID Transaksi</th><th>Nama Usaha/Kegiatan</th><th>Periode</th><th class="r">Tarif</th><th class="r">Diterima</th><th class="r">Selisih</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="tBody"></tbody></table></div></div>';
+      (PTG() ? bCetak : limSel('t')) + '</div>' + (PTG() ? '' : '</div>') + '<div class="tw"><table class="t tfull"><thead><tr><th>No</th><th>Tanggal</th><th>No Bukti / ID Transaksi</th><th>Nama Usaha/Kegiatan</th><th>Periode</th><th class="r">Tarif</th><th class="r">Diterima</th><th class="r">Selisih</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="tBody"></tbody></table></div></div>';
     if (!PTG()) { siapTabel('#tBody', []); pasangUrut('#tBody', 'trx', PETA_TRX, listTrx); }
     pasangLim('t', listTrx);
     if (PTG()) { pasangPeriodePtg('t', function () { S.lim.t = 100; pageTrx(); }); }
