@@ -1697,10 +1697,11 @@ function cetakMou() {
   var tot = rows.reduce(function (a, m) { return a + m.tarif; }, 0), sudah = rows.filter(function (m) { return m.ttd === 'Sudah' && m.noMou1; }).length;
   var html = lapHtml({
     judul: 'Laporan Register MOU', fl: 'Laporan MOU', sub: subLap(ex), kec: ex[0] && ex[0].indexOf('Kecamatan ') === 0 ? ex[0] : '',
-    kiri: 'Jumlah MOU sudah ditandatangani: ' + sudah + ' | Total tarif kesepakatan MOU: Rp ' + nfi(tot),
-    cols: [['No', 4.5], ['Nama Usaha / Kegiatan', 27], ['Nomor MOU<br>Pihak Pertama', 24], ['Nomor MOU<br>Pihak Kedua', 24], ['Tanggal MOU', 8.5], ['Tarif<br>Kesepakatan (Rp)', 12]],
+    kiri: 'Jumlah MOU sudah ditandatangani: ' + sudah + ' | Total tarif/bulan: Rp ' + nfi(tot) + ' | Total tarif/tahun: Rp ' + nfi(tot * 12),
+    cols: [['No', 4], ['Nama Usaha / Kegiatan<br>Alamat', 38], ['Nomor MOU<br>Pihak Pertama /<br>Pihak Kedua', 22], ['Tanggal MOU', 9], ['Tarif/Bulan<br>(Rp)', 13.5], ['Tarif/Tahun<br>(Rp)', 13.5]],
     rows: rows.map(function (m, i) {
-      return '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(m.nama) + '</td><td>' + esc(m.noMou1 || '-') + '</td><td>' + esc(m.noMou2 || '-') + '</td><td class="c">' + (m.tanggal ? tglID(m.tanggal) : '-') + '</td><td class="r">' + (m.tarif ? nfi(m.tarif) : '-') + '</td></tr>';
+      var alm = [m.alamat, m.kel, m.kec].filter(function (x) { return x && String(x).trim(); }).join(', ');
+      return '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(m.nama) + '<br><span style="font-size:.92em;color:#444">' + esc(alm || '-') + '</span></td><td>' + esc(m.noMou1 || '-') + '<br>' + esc(m.noMou2 || '-') + '</td><td class="c">' + (m.tanggal ? tglID(m.tanggal) : '-') + '</td><td class="r">' + (m.tarif ? nfi(m.tarif) : '-') + '</td><td class="r">' + (m.tarif ? nfi(m.tarif * 12) : '-') + '</td></tr>';
     }).join('')
   });
   printDoc(html, 'A4 landscape', 'Laporan MOU Retribusi - ' + (($('#mKec') && $('#mKec').value) || wilayahNama()) + (f.length ? ' - ' + f.join(' - ') : '') + ' - ' + waktuLokal().slice(0, 10), undefined);
