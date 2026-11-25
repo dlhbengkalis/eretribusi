@@ -2215,9 +2215,12 @@ function formTrx(pref, periodePref) {
   modal('Catat Transaksi', body, true);
 
   function nBulan() { var v = $('#t_sd').value, a = $('#t_per').value; if (!v || v <= a) return 1; return (Number(v.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(v.slice(5)) - Number(a.slice(5)) + 1; }
-  function isiSd() {   // pilihan "Sampai bulan": dari bulan setelah periode awal, maksimal 12 bulan sekaligus
-    var a = $('#t_per').value, y = Number(a.slice(0, 4)), m = Number(a.slice(5)), h = '<option value="">Satu bulan saja</option>';
-    for (var i = 1; i < 12; i++) { m++; if (m > 12) { m = 1; y++; } h += '<option value="' + y + '-' + (m < 10 ? '0' : '') + m + '">s.d. ' + BLN_PJG[m - 1] + ' ' + y + ' (' + (i + 1) + ' bulan)</option>'; }
+  function isiSd() {   // "Sampai Dengan": nama bulan saja; tahun ditentukan otomatis (bulan yang sama dengan "Dari" = satu bulan; bulan lain = kemunculan berikutnya, maks 12 bulan)
+    var a = $('#t_per').value, y0 = Number(a.slice(0, 4)), m0 = Number(a.slice(5)), h = '';
+    for (var mm = 1; mm <= 12; mm++) {
+      var off = (mm - m0 + 12) % 12, yy = y0 + (mm < m0 ? 1 : 0);
+      h += '<option value="' + (off === 0 ? '' : yy + '-' + (mm < 10 ? '0' : '') + mm) + '"' + (off === 0 ? ' selected' : '') + '>' + BLN_PJG[mm - 1] + '</option>';
+    }
     $('#t_sd').innerHTML = h;
   }
   function hitung() {
