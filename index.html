@@ -1205,6 +1205,7 @@ async function mulai() {
   document.addEventListener('visibilitychange', function () { if (!document.hidden && S.token && !S.user) pulihSesi(0); });
   var t = store.get('er_token');
   if (t) { S.token = t; pulihSesi(0); }
+  else setTimeout(function () { try { api('api_loginOpsi').catch(function () { /* abaikan */ }); } catch (e) { /* abaikan */ } }, 400);   // membangunkan server selagi pengguna mengetik username & kata sandi
 }
 /** Masuk otomatis dengan token tersimpan. Token HANYA dibuang bila server menyatakan sesi habis (keluarLokal); gangguan jaringan atau server sibuk tidak boleh membuat pengguna keluar: dicoba lagi otomatis. */
 async function pulihSesi(n) {
@@ -1292,7 +1293,9 @@ async function masukApp(boot) {
   $('#btnKelola').hidden = peran === 'PETUGAS';
   if (peran === 'PETUGAS') pasangFab();
   go('home');
-  setTimeout(function () { if (!S.token) return; prefetch('objek', ['api_objekList', S.token]); if (S.user && S.user.role !== 'PETUGAS') prefetch('mou', ['api_mouList', S.token]); }, 800);
+  // Praambil data hanya di jaringan yang cukup cepat dan setelah beranda tampil, agar tidak berebut kecepatan dengan beranda.
+  var kn = navigator.connection, lambat = kn && (kn.saveData || /(^|-)(slow-)?2g|3g/.test(kn.effectiveType || ''));
+  if (!lambat) setTimeout(function () { if (!S.token) return; prefetch('objek', ['api_objekList', S.token]); if (S.user && S.user.role !== 'PETUGAS') prefetch('mou', ['api_mouList', S.token]); }, 4000);
   return true;
 }
 function keluarLokal() {
@@ -2185,11 +2188,12 @@ function formTrx(pref, periodePref) {
   var r = S.ref, sel = null, prev = 0;
   var L = function (t, req) { return '<label class="lbl">' + t + (req ? ' <i>*</i>' : '') + '</label>'; };
   var perF = '<div>' + L('Bulan Periode', 1) + selectPeriode('t_per', periodePref || r.periodeIni) + '</div>';
+  var sdF = '<div>' + L('Sampai Bulan (bayar beberapa bulan)') + '<select id="t_sd"></select></div>';
   var tglF = '<div>' + L('Tanggal Transaksi', 1) + '<input id="t_tgl" type="date" value="' + r.hariIni + '" max="' + r.hariIni + '"></div>';
   var namaF = '<div class="s2">' + L('Nama Usaha/Kegiatan (ketik untuk cari)', 1) + '<div class="cb"><input id="t_nama" placeholder="Ketik nama atau ID (hanya objek bertarif)…"><div class="cb-l" id="t_list" hidden></div></div></div>';
   var bktF = '<div>' + L('No. Bukti / Kuitansi') + '<input id="t_bukti" maxlength="60" placeholder="Kosongkan untuk nomor otomatis"></div>';
   var identitas = PTG() ?
-    '<div class="g4">' + perF + tglF + bktF + namaF + '</div>' +
+    '<div class="g4">' + perF + sdF + tglF + bktF + namaF + '</div>' +
     '<div class="g4"><div hidden><input id="t_id" readonly></div><div>' + L('Kelurahan/Desa (otomatis)') + '<input id="t_kel" readonly></div><div>' + L('Kecamatan (otomatis)') + '<input id="t_kec" readonly></div>' +
     '<div>' + L('Tarif (otomatis)') + '<input id="t_tarif" readonly></div></div>' :
     sek('Identitas Transaksi') + '<div class="g4">' + tglF + namaF + bktF + '</div>' +
@@ -2208,9 +2212,22 @@ function formTrx(pref, periodePref) {
     '<div id="fErr" class="err" hidden></div></div>' + aksiForm('Simpan Transaksi', 't_simpan') + '</form>';
   modal('Catat Transaksi', body, true);
 
+  function nBulan() { var v = $('#t_sd').value, a = $('#t_per').value; if (!v || v <= a) return 1; return (Number(v.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(v.slice(5)) - Number(a.slice(5)) + 1; }
+  function isiSd() {   // pilihan "Sampai bulan": dari bulan setelah periode awal, maksimal 12 bulan sekaligus
+    var a = $('#t_per').value, y = Number(a.slice(0, 4)), m = Number(a.slice(5)), h = '<option value="">Satu bulan saja</option>';
+    for (var i = 1; i < 12; i++) { m++; if (m > 12) { m = 1; y++; } h += '<option value="' + y + '-' + (m < 10 ? '0' : '') + m + '">s.d. ' + BLN_PJG[m - 1] + ' ' + y + ' (' + (i + 1) + ' bulan)</option>'; }
+    $('#t_sd').innerHTML = h;
+  }
   function hitung() {
-    var j = num($('#t_jml').value);
+    var j = num($('#t_jml').value), nb = nBulan();
     if (!sel) { $('#t_sel').value = ''; $('#t_stat').innerHTML = '<span class="badge gray">—</span>'; return; }
+    if (nb > 1) {   // perkiraan: server membagi per bulan dan menghitung status tiap bulan
+      var s2 = j - sel.tarifEfektif * nb;
+      $('#t_sel').value = (s2 > 0 ? '+' : '') + new Intl.NumberFormat('id-ID').format(s2);
+      $('#t_stat').innerHTML = j ? '<span class="badge ' + (s2 >= 0 ? '' : 'red') + '">' + (s2 >= 0 ? 'Lunas ' + nb + ' bulan' : 'Kurang untuk ' + nb + ' bulan') + '</span>' : '<span class="badge gray">—</span>';
+      $('#t_prev').textContent = 'Satu kuitansi untuk ' + nb + ' bulan: dibagi otomatis per bulan @ ' + rp(sel.tarifEfektif) + ' (total ' + rp(sel.tarifEfektif * nb) + '). Sisa lebih masuk ke bulan terakhir.'; $('#t_prev').className = 'note';
+      return;
+    }
     var s = prev + j - sel.tarifEfektif;
     $('#t_sel').value = (s > 0 ? '+' : '') + new Intl.NumberFormat('id-ID').format(s);
     $('#t_stat').innerHTML = j ? '<span class="badge ' + (s >= 0 ? '' : 'red') + '">' + (s >= 0 ? 'Lunas' : 'Belum Lunas') + '</span>' : '<span class="badge gray">—</span>';
@@ -2221,7 +2238,7 @@ function formTrx(pref, periodePref) {
     try {
       var p = await api('api_trxSebelumnya', S.token, sel.id, $('#t_per').value);
       prev = p.total;
-      if (p.n) { $('#t_prev').textContent = 'Periode ini sudah dibayar ' + rp(p.total) + ' (' + p.n + ' transaksi). Selisih dihitung kumulatif.'; $('#t_prev').className = 'note warn'; }
+      if (p.n && nBulan() === 1) { $('#t_prev').textContent = 'Periode ini sudah dibayar ' + rp(p.total) + ' (' + p.n + ' transaksi). Selisih dihitung kumulatif.'; $('#t_prev').className = 'note warn'; }
     } catch (e) { /* abaikan */ }
     hitung();
   }
@@ -2237,7 +2254,9 @@ function formTrx(pref, periodePref) {
     function (o) { return PTG() ? '<b>' + esc(o.nama) + '</b><br><span class="mut">' + esc([o.alamat || '-', kelPendek(o.kel)].filter(Boolean).join(' • ')) + '</span>' : '<b>' + esc(o.nama) + '</b><br><span class="mut">' + esc(o.id) + ' · ' + esc(o.kec) + ' · ' + rp(o.tarifEfektif) + '</span>'; }, pilih, kosong,
     { maks: 100000, bagian: 60, hitung: function (n) { return new Intl.NumberFormat('id-ID').format(n) + ' objek bertarif'; } });
   if (pref) pilih(pref);
-  $('#t_per').onchange = muatPrev;
+  isiSd();
+  $('#t_per').onchange = function () { isiSd(); muatPrev(); };
+  $('#t_sd').onchange = function () { if (nBulan() === 1) { $('#t_prev').textContent = ''; muatPrev(); } else hitung(); };
   $('#t_jml').oninput = function () { var v = num(this.value); this.value = v ? new Intl.NumberFormat('id-ID').format(v) : ''; hitung(); };
 
   $('#t_btnFoto').onclick = function () {
@@ -2262,15 +2281,19 @@ function formTrx(pref, periodePref) {
     if (!num($('#t_jml').value)) er.push('Jumlah Diterima wajib diisi.');
     if (er.length) { formErr(er.join('\n')); return; }
     var g = S.gps || {};
-    var d = { tanggal: $('#t_tgl').value, noBukti: $('#t_bukti').value, idObjek: sel.id, periode: $('#t_per').value, jumlah: num($('#t_jml').value),
+    var d = { tanggal: $('#t_tgl').value, noBukti: $('#t_bukti').value, idObjek: sel.id, periode: $('#t_per').value, periodeSampai: $('#t_sd').value || '', jumlah: num($('#t_jml').value),
       metode: $('#t_met').value, foto: S.foto ? S.foto.data : '', lat: g.lat, lng: g.lng, akurasi: g.acc, waktuPerangkat: S.foto ? S.foto.waktu : waktuLokal() };
     $('#t_simpan').disabled = true; busy(true);
     try {
       var res = await api('api_trxSave', S.token, d);
       closeModal();
-      modal('Transaksi Tersimpan', '<div class="card"><dl class="kv">' + '<dt>ID</dt><dd>' + esc(res.id) + '</dd><dt>Tarif</dt><dd>' + rp(res.tarif) + '</dd><dt>Selisih</dt><dd>' +
-        (res.selisih > 0 ? '+' : '') + new Intl.NumberFormat('id-ID').format(res.selisih) + '</dd><dt>Status</dt><dd><span class="badge ' + (res.status === 'Lunas' ? '' : 'red') + '">' + esc(res.status) + '</span></dd></dl></div>' +
+      var multi = res.daftar && res.daftar.length > 1;
+      modal('Transaksi Tersimpan',
+        (multi ? '' : '<div class="card"><dl class="kv"><dt>ID</dt><dd>' + esc(res.id) + '</dd><dt>Tarif</dt><dd>' + rp(res.tarif) + '</dd><dt>Selisih</dt><dd>' +
+          (res.selisih > 0 ? '+' : '') + new Intl.NumberFormat('id-ID').format(res.selisih) + '</dd><dt>Status</dt><dd><span class="badge ' + (res.status === 'Lunas' ? '' : 'red') + '">' + esc(res.status) + '</span></dd></dl></div>') +
         '<dl class="kv" style="margin-top:8px"><dt>No Bukti</dt><dd>' + esc(res.noBukti) + '</dd></dl>' +
+        (multi ? '<div class="card" style="margin-top:8px"><b>Dicatat untuk ' + res.daftar.length + ' bulan</b><dl class="kv">' + res.daftar.map(function (x) {
+          return '<dt>' + esc(BLN_PJG[Number(x.periode.slice(5)) - 1] + ' ' + x.periode.slice(0, 4)) + '</dt><dd>' + rp(x.jumlah) + ' <span class="badge ' + (x.status === 'Lunas' ? '' : 'red') + '">' + esc(x.status) + '</span></dd>'; }).join('') + '</dl></div>' : '') +
         (PTG() ? '' : '<button class="btn block" id="rKw">🖨 Cetak Kwitansi</button>') + '<button class="btn primary block" id="rOk">Selesai</button>');
       if ($('#rKw')) $('#rKw').onclick = function () { cetakKwitansi(res.trx); };
       $('#rOk').onclick = function () { closeModal(); go($('#pTrx').hidden ? 'home' : 'trx'); };
