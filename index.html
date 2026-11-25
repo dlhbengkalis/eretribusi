@@ -2187,18 +2187,20 @@ function waktuLokal() { return new Date().toLocaleString('sv-SE', { timeZone: 'A
 function formTrx(pref, periodePref) {
   var r = S.ref, sel = null, prev = 0;
   var L = function (t, req) { return '<label class="lbl">' + t + (req ? ' <i>*</i>' : '') + '</label>'; };
-  var perF = '<div>' + L('Bulan Periode', 1) + selectPeriode('t_per', periodePref || r.periodeIni) + '</div>';
-  var sdF = '<div>' + L('Sampai Bulan (bayar beberapa bulan)') + '<select id="t_sd"></select></div>';
+  var perF = '<div>' + L('Dari Bulan', 1) + selectPeriode('t_per', periodePref || r.periodeIni) + '</div>';
+  var sdF = '<div>' + L('Sampai Dengan') + '<select id="t_sd"></select></div>';
+  var pairF = '<div class="s2"><div class="g2">' + perF + sdF + '</div></div>';
   var tglF = '<div>' + L('Tanggal Transaksi', 1) + '<input id="t_tgl" type="date" value="' + r.hariIni + '" max="' + r.hariIni + '"></div>';
   var namaF = '<div class="s2">' + L('Nama Usaha/Kegiatan (ketik untuk cari)', 1) + '<div class="cb"><input id="t_nama" placeholder="Ketik nama atau ID (hanya objek bertarif)…"><div class="cb-l" id="t_list" hidden></div></div></div>';
   var bktF = '<div>' + L('No. Bukti / Kuitansi') + '<input id="t_bukti" maxlength="60" placeholder="Kosongkan untuk nomor otomatis"></div>';
   var identitas = PTG() ?
-    '<div class="g4">' + perF + sdF + tglF + bktF + namaF + '</div>' +
+    '<div class="g4">' + pairF + tglF + bktF + namaF + '</div>' +
     '<div class="g4"><div hidden><input id="t_id" readonly></div><div>' + L('Kelurahan/Desa (otomatis)') + '<input id="t_kel" readonly></div><div>' + L('Kecamatan (otomatis)') + '<input id="t_kec" readonly></div>' +
     '<div>' + L('Tarif (otomatis)') + '<input id="t_tarif" readonly></div></div>' :
     sek('Identitas Transaksi') + '<div class="g4">' + tglF + namaF + bktF + '</div>' +
-    '<div class="g4"><div>' + L('ID Objek (otomatis)') + '<input id="t_id" readonly></div><div>' + L('Kecamatan (otomatis)') + '<input id="t_kec" readonly></div>' + perF + sdF +
-    '<div>' + L('Tarif (otomatis)') + '<input id="t_tarif" readonly></div></div>';
+    '<div class="g4"><div>' + L('ID Objek (otomatis)') + '<input id="t_id" readonly></div><div>' + L('Kecamatan (otomatis)') + '<input id="t_kec" readonly></div>' +
+    '<div>' + L('Tarif (otomatis)') + '<input id="t_tarif" readonly></div></div>' +
+    '<div class="g4">' + pairF + '</div>';
   var body = '<form id="fTrx" autocomplete="off"><div class="mb">' + identitas +
     '<div class="note" id="t_sumber"></div><div class="note" id="t_prev"></div>' +
     sek('Pembayaran') +
