@@ -419,6 +419,23 @@ a.dl .si{width:16px;height:16px}
 .kwp .ttdk>div{width:48%;display:flex;flex-direction:column}
 .kwp .ttdk .sp{height:19mm}
 .kwp .ttdk .sg{border-bottom:.25pt solid #000;width:60mm;margin:0 auto;flex:1;min-height:12mm}
+.kwp.rc .rc-jd{display:flex;justify-content:space-between;align-items:flex-end;margin:6mm 0 4mm}
+.kwp.rc .rc-sj{font-size:9.5pt;color:#4a5a61;line-height:1.4}
+.kwp.rc .rc-t{font-size:30pt;color:#8a969b;line-height:1;font-weight:300;letter-spacing:.5px}
+.kwp.rc .rc-g{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm}
+.kwp.rc .rc-c{background:#f1f4f5;padding:2.2mm 3.5mm}.kwp.rc .rc-w{grid-column:span 2}
+.kwp.rc .rc-k{font-size:7.5pt;font-weight:700;text-transform:uppercase;color:#5b6b72;letter-spacing:.4px;margin-bottom:.8mm}
+.kwp.rc .rc-v{font-size:10pt;line-height:1.4}
+.kwp.rc .rc-ok{color:#0b6b3a}.kwp.rc .rc-kr{color:#b3261e}
+.kwp.rc .rc-bar{background:#e6ebed;font-weight:700;font-size:9.5pt;padding:2mm 3.5mm;margin-top:4mm}
+.kwp.rc .rc-it{display:flex;justify-content:space-between;align-items:flex-end;padding:4mm 3.5mm;line-height:1.45}
+.kwp.rc .rc-it b{font-size:10.5pt}.kwp.rc .rc-it div div{color:#4a5a61;font-size:9.5pt}
+.kwp.rc .rc-n{font-weight:700;font-size:10.5pt;white-space:nowrap}
+.kwp.rc .rc-s{padding-top:0;font-size:9.5pt;color:#4a5a61}
+.kwp.rc .rc-tot{display:flex;justify-content:space-between;align-items:center;border-top:.5pt solid #9aa7ad;border-bottom:.5pt solid #9aa7ad;padding:3.5mm}
+.kwp.rc .rc-tot span{font-weight:700;font-size:9.5pt;color:#4a5a61}.kwp.rc .rc-tot b{font-size:17pt;color:#233a44}
+.kwp.rc .rc-tb{padding:3mm 3.5mm;font-size:10pt}.kwp.rc .rc-tb span{display:block;font-size:7.5pt;font-weight:700;text-transform:uppercase;color:#5b6b72;letter-spacing:.4px;margin-bottom:.8mm}
+.kwp.rc .rc-ft{text-align:center;font-size:8.5pt;color:#6b7a80;margin:0 0 4mm;line-height:1.45}.kwp.rc .rc-tb+.rc-ft{margin-top:12mm}
 /* ===== Halaman Pengaturan ===== */
 .stp .ph-s{max-width:1100px}
 .stp table.stg{font-size:13px}
@@ -2715,23 +2732,28 @@ function cetakSuratSetoran(t, w) {
 }
 async function cetakKwitansi(t) {
   var w = bukaCetak();
-  if (PTG()) { cetakSuratSetoran(t, w); return; }
-  var r = function (k, v) { return '<tr><td>' + k + '</td><td>' + v + '</td></tr>'; };
   var kec = t.kec || '', tb = terbilang(t.jumlah) + ' rupiah';
   tb = tb.charAt(0).toUpperCase() + tb.slice(1);
   var jab = st('kepalaJabatan').replace(/ruang terbuka hijau/i, 'RTH');
-  var html = '<section class="pg pgk"><div class="kwp">' + kopHtml(kec, true, true) +
-    '<h2>KUITANSI PEMBAYARAN RETRIBUSI</h2><div class="no">Nomor ' + esc(t.noBukti) + '</div>' +
-    '<div class="jml"><span>Uang sejumlah</span><b>Rp ' + nfi(t.jumlah) + '</b></div><table class="kvt">' +
-    r('Telah diterima dari', '<b>' + esc(t.nama) + '</b>') +
-    r('Terbilang', '<i>' + esc(tb) + '</i>') +
-    r('Untuk pembayaran', 'Retribusi periode ' + esc(periodeLabel(t.periode))) +
-    r('Metode pembayaran', esc(t.metode)) +
-    r('Status pembayaran', '<b>' + esc(t.status === 'Lunas' ? 'Lunas' : 'Belum lunas') + '</b>') +
-    r('Keterangan', '') +
-    '</table><div class="ttdk"><div><div>Mengetahui,<br>' + esc(jab) + (kec ? '<br>Kecamatan ' + esc(kec) : '') + '</div>' +
-    '<div class="sp"></div><div><b>' + esc(st('kepalaNama')) + '</b>' + (st('kepalaNip') ? '<br>NIP. ' + esc(st('kepalaNip').replace(/^NIP\.?\s*/i, '')) : '') + '</div></div>' +
-    '<div><div>' + esc(st('kabupaten').replace(/^(kabupaten|kota)\s+/i, '')) + ', ' + tglPanjang(t.tanggal) + '<br>Penerima Retribusi,</div><div class="sp sg"></div></div></div></div></section>';
+  var ob = objTrx(t), lunas = t.status === 'Lunas', sel = Number(t.selisih) || 0;
+  var sub = [kelPendek(t.kel || kelTrx(t)), kec ? 'Kec. ' + kec : ''].filter(Boolean).join(', ');
+  var c = function (k, v, cls) { return '<div class="rc-c' + (cls ? ' ' + cls : '') + '"><div class="rc-k">' + k + '</div><div class="rc-v">' + v + '</div></div>'; };
+  var html = '<section class="pg pgk"><div class="kwp rc">' + kopHtml(kec, true, true) +
+    '<div class="rc-jd"><div class="rc-sj">Bukti Pembayaran Retribusi<br>Pelayanan Persampahan / Kebersihan</div></div>' +
+    '<div class="rc-g">' +
+      c('Diterima dari', '<b>' + esc(t.nama) + '</b>' + (t.alamat || ob.alamat ? '<br>' + esc(t.alamat || ob.alamat) : '') + (sub ? '<br>' + esc(sub) : ''), 'rc-w') +
+      c('No. Kuitansi', esc(t.noBukti)) + c('ID Transaksi', esc(t.id || '')) +
+      c('Tanggal Bayar', esc(tglPanjang(t.tanggal))) + c('Periode', esc(periodeLabel(t.periode))) +
+      c('Metode Pembayaran', esc(t.metode)) + c('Status', '<b class="' + (lunas ? 'rc-ok' : 'rc-kr') + '">' + (lunas ? 'Lunas' : 'Belum lunas') + '</b>') +
+    '</div>' +
+    '<div class="rc-bar">Rincian Pembayaran</div>' +
+    '<div class="rc-it"><div><b>Retribusi Pelayanan Persampahan / Kebersihan</b><div>Periode ' + esc(periodeLabel(t.periode)) + '</div>' +
+      (Number(t.tarif) ? '<div>Tarif Rp ' + nfi(t.tarif) + ' / bulan</div>' : '') + '</div><div class="rc-n">Rp ' + nfi(t.jumlah) + '</div></div>' +
+    '<div class="rc-tot"><span>TOTAL</span><b>Rp ' + nfi(t.jumlah) + '</b></div>' +
+    '<div class="rc-tb"><span>Terbilang</span><i>' + esc(tb) + '</i></div>' +
+    '<div class="rc-ft">Bukti pembayaran ini merupakan tanda penerimaan yang sah atas pembayaran retribusi.<br>Dokumen ini diterbitkan secara elektronik tanpa tanda tangan basah.</div>' +
+    '<div class="rc-ft">Harap simpan bukti ini dengan baik,<br>bukti ini dapat digunakan untuk keperluan pencatatan dan pelaporan.<br>Pengembalian pembayaran hanya dapat dilakukan sesuai dengan ketentuan yang berlaku.</div>' +
+    '<div class="rc-ft">Untuk informasi lebih lanjut, silakan hubungi<br>UPTD Pengelolaan Sampah dan RTH' + (kec ? ' Kecamatan ' + esc(kec) : '') + '.</div></div></section>';
   printDoc(html, 'A4 portrait', 'Kwitansi ' + t.noBukti + ' - ' + t.nama, w);
 }
 
