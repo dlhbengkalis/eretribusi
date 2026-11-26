@@ -2726,13 +2726,13 @@ function cssHal(ukuran) { return '@page{size:' + ukuran + ';margin:0}'; }
  * Cetak/Simpan PDF. Judul dokumen = nama file default saat "Simpan sebagai PDF".
  * Jendela baru dipakai karena judul halaman utama tidak dapat diubah dari dalam Apps Script.
  */
-function printDoc(html, ukuran, judul, w) {
+function printDoc(html, ukuran, judul, w, langsung) {
   var nama = namaBerkas(judul || 'Laporan E-Retribusi');
   if (html.indexOf('<div class="lp') === 0) html = paginasi(html);
-  if (!w) w = bukaCetak();
+  if (!w && !langsung) w = bukaCetak();
   var css = Array.prototype.map.call(document.querySelectorAll('style'), function (s) { return s.textContent; }).join('\n');
   try {
-    if (!w || w.closed) throw new Error('popup');
+    if (langsung || !w || w.closed) throw new Error('popup');
     w.document.open();
     var xb = PTG() ? '<button type="button" onclick="window.close()" aria-label="Tutup" class="ppx">✕</button>' : '';
     w.document.write('<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>' + esc(nama) + '</title><link href="https://fonts.googleapis.com/css2?family=Bevan&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet"><style>' + css +
@@ -2752,7 +2752,7 @@ function printDoc(html, ukuran, judul, w) {
   document.body.classList.add('printing');
   var selesai = function () { document.body.classList.remove('printing'); document.title = judulAsal; window.removeEventListener('afterprint', selesai); };
   window.addEventListener('afterprint', selesai);
-  toast('Pop-up diblokir browser, mencetak di halaman ini. Nama file PDF mungkin tidak sesuai laporan; izinkan pop-up untuk situs ini.', true);
+  if (!langsung) toast('Pop-up diblokir browser, mencetak di halaman ini. Nama file PDF mungkin tidak sesuai laporan; izinkan pop-up untuk situs ini.', true);
   setTimeout(function () { try { window.print(); } catch (e3) { selesai(); } }, 150);
 }
 function terbilang(n) {
@@ -2797,7 +2797,6 @@ function cetakSuratSetoran(t, w) {
   printDoc(html, 'A5 landscape', 'Surat Setoran ' + t.noBukti + ' - ' + t.nama, w);
 }
 async function cetakKwitansi(t) {
-  var w = bukaCetak();
   var kec = t.kec || '', tb = terbilang(t.jumlah) + ' rupiah';
   tb = tb.charAt(0).toUpperCase() + tb.slice(1);
   var jab = st('kepalaJabatan').replace(/ruang terbuka hijau/i, 'RTH');
@@ -2820,7 +2819,7 @@ async function cetakKwitansi(t) {
     '<div class="rc-ft">Bukti pembayaran ini merupakan tanda penerimaan yang sah atas pembayaran retribusi.<br>Dokumen ini diterbitkan secara elektronik tanpa tanda tangan basah.</div>' +
     '<div class="rc-ft">Harap simpan bukti ini dengan baik,<br>bukti ini dapat digunakan untuk keperluan pencatatan dan pelaporan.<br>Pengembalian pembayaran hanya dapat dilakukan sesuai dengan ketentuan yang berlaku.</div>' +
     '<div class="rc-ft">Untuk informasi lebih lanjut, silakan hubungi<br>UPTD Pengelolaan Sampah dan RTH' + (kec ? ' Kecamatan ' + esc(kec) : '') + '.</div></div></section>';
-  printDoc(html, 'A4 portrait', 'Kwitansi ' + t.noBukti + ' - ' + t.nama, w);
+  printDoc(html, 'A4 portrait', 'Kwitansi ' + t.noBukti + ' - ' + t.nama, null, true);
 }
 
 /* ================= PENGATURAN ================= */
