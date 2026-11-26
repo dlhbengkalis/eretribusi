@@ -408,7 +408,7 @@ a.dl .si{width:16px;height:16px}
 .lp .ttd-k{padding-top:5mm;margin-left:64%;font-size:10pt;line-height:1.3;break-inside:avoid;page-break-inside:avoid}
 .lp .ttd-k .tt{white-space:pre}
 .lp .ttd-k .nm{margin-top:13mm;font-weight:700}
-.pg.pgk{width:210mm;height:291mm;padding:10mm 12mm 0;break-after:avoid;page-break-after:avoid;break-inside:avoid}
+.pg.pgk{width:auto;max-width:210mm;height:auto;min-height:0;padding:10mm 12mm 4mm;overflow:visible;break-after:avoid;page-break-after:avoid;break-inside:avoid}
 @media print{body.printing{margin:0;padding:0;height:auto;min-height:0}html:has(body.printing){height:auto}}
 .kwp{font-size:10pt;line-height:1.35}
 .kwp h2{font-size:14pt;margin:8mm 0 0;color:#233a44;line-height:1.2}
@@ -2803,7 +2803,7 @@ function pasSatuLembar(html) {
   host.style.cssText = 'position:absolute;left:-9999px;top:0;width:210mm;visibility:hidden';
   host.innerHTML = html; document.body.appendChild(host);
   try {
-    var probe = document.createElement('div'); probe.style.cssText = 'height:277mm;width:1px'; host.appendChild(probe);
+    var probe = document.createElement('div'); probe.style.cssText = 'height:248mm;width:1px'; host.appendChild(probe);
     var avail = probe.offsetHeight; host.removeChild(probe);
     var kw = host.querySelector('.kwp'), h = kw ? kw.offsetHeight : 0;
     if (kw && h > avail && avail > 0) return html.replace('<div class="kwp rc">', '<div class="kwp rc" style="zoom:' + (avail / h * 0.98).toFixed(3) + '">');
