@@ -397,6 +397,14 @@ a.dl .si{width:16px;height:16px}
 .lp tr.tot td.tl{text-align:left}
 .lp.rapat td,.lp.rapat th{font-size:8pt;padding-left:1.2mm;padding-right:1.2mm}
 .lp tr{break-inside:avoid}
+.lp.thn td,.lp.thn th{font-size:7.5pt;padding-left:.8mm;padding-right:.8mm}
+.lp.thn th{padding-top:1.6mm;padding-bottom:1.6mm}
+.lp.thn td.nu{padding-left:2mm;text-align:left;font-weight:400}
+.lp.thn .id{font-size:6.5pt;letter-spacing:0;color:#6b7a80}
+.lp.thn tr.tot td{padding:1.8mm .4mm;font-size:6.5pt}
+.lp.thn tr.tot td.tl{padding-left:2mm;font-size:7.5pt}
+.lp .ps i{font-style:italic}
+.pg .pg-ft.hal{display:block;text-align:right}
 .lp .ttd-k{padding-top:5mm;margin-left:64%;font-size:10pt;line-height:1.3;break-inside:avoid;page-break-inside:avoid}
 .lp .ttd-k .tt{white-space:pre}
 .lp .ttd-k .nm{margin-top:13mm;font-weight:700}
@@ -2138,21 +2146,27 @@ function modalCetakTahunan() {
 function htmlLaporanTahunan(rows, y, ket) {
   var map = {}, urut = [];
   rows.forEach(function (t) {
-    var o = map[t.idObjek]; if (!o) { o = map[t.idObjek] = { nama: t.nama, alamat: t.alamat || '', kel: t.kel || '', kec: t.kec || '', b: new Array(12).fill(0), tot: 0 }; urut.push(o); }
-    var m = Number(String(t.periode).slice(5)) - 1; if (m >= 0 && m < 12) { o.b[m] += t.jumlah; o.tot += t.jumlah; }
+    var o = map[t.idObjek]; if (!o) { o = map[t.idObjek] = { nama: t.nama, kel: kelTrx(t), kec: t.kec || '', b: new Array(12).fill(0), tot: 0 }; urut.push(o); }
+    var m = Number(String(t.periode).slice(5)) - 1; if (m >= 0 && m < 12) { o.b[m] += t.jumlah; }
   });
   urut.sort(function (a, b) { return a.kec < b.kec ? -1 : a.kec > b.kec ? 1 : (a.nama < b.nama ? -1 : a.nama > b.nama ? 1 : 0); });
+  /* Total per usaha/kegiatan = jumlah 12 bulan (dihitung otomatis, bukan diambil dari data). */
   var bt = new Array(12).fill(0), gt = 0;
   var bodi = urut.map(function (o, i) {
+    o.tot = o.b.reduce(function (a, v) { return a + v; }, 0);
     o.b.forEach(function (v, k) { bt[k] += v; }); gt += o.tot;
-    var sub = [o.alamat, kelPendek(o.kel)].filter(Boolean).join(', ');
-    return '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(o.nama) + (sub ? '<div class="id">' + esc(sub) + '</div>' : '') + '</td><td>' + esc(o.kec) + '</td>' +
-      o.b.map(function (v) { return '<td class="r">' + (v ? nfi(v) : '-') + '</td>'; }).join('') + '<td class="r"><b>' + nfi(o.tot) + '</b></td></tr>';
+    var kl = o.kel ? (/^\s*desa\b/i.test(o.kel) ? 'Desa ' : 'Kel. ') + kelPendek(o.kel) : '';
+    var sub = [kl, o.kec ? 'Kec. ' + o.kec : ''].filter(Boolean).join(', ');
+    return '<tr><td class="c">' + (i + 1) + '.</td><td class="nu">' + esc(o.nama) + (sub ? '<div class="id">' + esc(sub) + '</div>' : '') + '</td>' +
+      o.b.map(function (v) { return '<td class="r">' + (v ? nfi(v) : '-') + '</td>'; }).join('') + '<td class="r">' + nfi(o.tot) + '</td></tr>';
   }).join('');
-  var cols = [['No', 3], ['Nama Usaha / Kegiatan', 20.6], ['Kecamatan', 7]].concat(BLN_PJG.map(function (b) { return [b.slice(0, 3), 5.2]; })).concat([['Total (Rp)', 7]]);
+  var lebar = [2.6, 16].concat(BLN_PJG.map(function () { return 6.1; })).concat([8.2]);
+  var thead = '<tr><th rowspan="2">No</th><th rowspan="2">Nama Usaha / Kegiatan</th><th colspan="12">Bulan Pembayaran</th><th rowspan="2">Total (Rp)</th></tr>' +
+    '<tr>' + BLN_PJG.map(function (b) { return '<th>' + b + '</th>'; }).join('') + '</tr>';
   return lapHtml({
-    rapat: true, judul: 'Laporan Pembayaran Retribusi Tahun ' + y, fl: 'Laporan Tahunan', sub: subLap(ket, y), nominal: true, cols: cols, rows: bodi,
-    foot: '<tr class="tot"><td class="tl" colspan="3">TOTAL</td>' + bt.map(function (v) { return '<td class="r">' + nfi(v) + '</td>'; }).join('') + '<td class="r">' + nfi(gt) + '</td></tr>'
+    ringkas: true, rapat: true, thn: true, judul: 'Laporan Pembayaran Retribusi Tahun ' + y, fl: 'Laporan Tahunan', sub: (ket || []).join(' | '),
+    cols: lebar.map(function (w) { return ['', w]; }), thead: thead, rows: bodi,
+    foot: urut.length > 1 ? '<tr class="tot"><td class="tl" colspan="2">TOTAL</td>' + bt.map(function (v) { return '<td class="r">' + nfi(v) + '</td>'; }).join('') + '<td class="r">' + nfi(gt) + '</td></tr>' : ''
   });
 }
 function wilayahNama() { return S.user.kec.length === 1 ? S.user.kec[0] : S.user.label; }
@@ -2658,11 +2672,11 @@ function ttdKepala(kecTeks, tempatTgl) {
 /** Laporan resmi: o = {judul, sub, kiri, fl, nominal, cols:[[label(html),lebar%]], rows, foot}. Dipecah per halaman oleh paginasi(). */
 function lapHtml(o) {
   var adm = S.user.role === 'ADMIN';
-  return '<div class="lp' + (o.rapat ? ' rapat' : '') + '" data-fl="' + esc(o.fl || o.judul) + '"><div class="lh">' + kopHtml() +
+  return '<div class="lp' + (o.rapat ? ' rapat' : '') + (o.thn ? ' thn' : '') + '" data-fl="' + esc(o.fl || o.judul) + '"' + (o.ringkas ? ' data-ft="hal"' : '') + '><div class="lh">' + kopHtml() +
     '<h2>' + esc(o.judul) + '</h2><div class="bar2"><div><div class="sb">' + esc(o.sub) + '</div>' + (o.kiri ? '<div class="kiri">' + esc(o.kiri) + '</div>' : '') + '</div>' +
-    '<div class="ps">Posisi per ' + tglPanjang(posisiIso()) + (o.nominal ? '<br>Nominal dalam rupiah' : '') + '</div></div></div>' +
+    (o.ringkas ? '<div class="ps"><i>Dalam satuan rupiah (Rp).</i></div>' : '<div class="ps">Posisi per ' + tglPanjang(posisiIso()) + (o.nominal ? '<br>Nominal dalam rupiah' : '') + '</div>') + '</div></div>' +
     '<table><colgroup>' + o.cols.map(function (c) { return '<col style="width:' + c[1] + '%">'; }).join('') + '</colgroup>' +
-    '<thead><tr>' + o.cols.map(function (c) { return '<th>' + c[0] + '</th>'; }).join('') + '</tr></thead><tbody>' + o.rows + (o.foot || '') + '</tbody></table>' +
+    '<thead>' + (o.thead || '<tr>' + o.cols.map(function (c) { return '<th>' + c[0] + '</th>'; }).join('') + '</tr>') + '</thead><tbody>' + o.rows + (o.foot || '') + '</tbody></table>' +
     ttdKepala(o.kec, o.tempatTgl) + '</div>';
 }
 /** Kop: lambang di kiri, nama instansi di kanan. Akun Admin = Pemerintah Kabupaten + Dinas; akun kecamatan = Dinas + UPT. */
@@ -2685,7 +2699,7 @@ function paginasi(html) {
     var probe = document.createElement('div'); probe.style.cssText = 'height:150mm;width:1px;position:absolute'; host.appendChild(probe);
     var avail = probe.offsetHeight - 2; host.removeChild(probe);
     var lp = host.querySelector('.lp'), head = lp.querySelector('.lh'), tbl = lp.querySelector('table'), ttd = lp.querySelector('.ttd-k');
-    var fl = lp.getAttribute('data-fl') || '', cg = tbl.querySelector('colgroup').outerHTML, th = tbl.tHead.outerHTML;
+    var fl = lp.getAttribute('data-fl') || '', hal = lp.getAttribute('data-ft') === 'hal', cg = tbl.querySelector('colgroup').outerHTML, th = tbl.tHead.outerHTML;
     var thH = tbl.tHead.offsetHeight, headH = head.offsetHeight, ttdH = ttd ? ttd.offsetHeight : 0;
     var rows = [].slice.call(tbl.tBodies[0].rows), pages = [], cur = { head: true, rows: [] }, used = headH + thH;
     rows.forEach(function (r) {
@@ -2702,7 +2716,7 @@ function paginasi(html) {
     return pages.map(function (p, i) {
       return '<section class="pg"><div class="' + lp.className + '">' + (p.head ? head.outerHTML : '') +
         (p.rows.length ? '<table>' + cg + th + '<tbody>' + p.rows.join('') + '</tbody></table>' : '') + (p.ttd && ttd ? ttd.outerHTML : '') + '</div>' +
-        '<div class="pg-ft"><span>E-Retribusi | ' + fl + '</span><span>Halaman ' + (i + 1) + ' dari ' + n + '</span><span>Tanggal cetak ' + tgl + '</span></div></section>';
+        '<div class="pg-ft' + (hal ? ' hal' : '') + '">' + (hal ? '<span>Halaman ' + (i + 1) + ' dari ' + n + '</span>' : '<span>E-Retribusi | ' + fl + '</span><span>Halaman ' + (i + 1) + ' dari ' + n + '</span><span>Tanggal cetak ' + tgl + '</span>') + '</div></section>';
     }).join('');
   } finally { document.body.removeChild(host); }
 }
