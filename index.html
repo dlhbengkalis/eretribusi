@@ -2134,7 +2134,7 @@ function detailTrx(t) {
     kv('Diinput oleh', esc(t.oleh) + '<br><span class="mut">' + esc(t.waktu) + '</span>') +
     kv('Validasi', t.verif === 'Sudah Dicek' ? 'Sudah divalidasi<br><span class="mut">oleh ' + esc(t.verifOleh) + ' · ' + esc(t.verifWaktu) + '</span>' : 'Belum divalidasi') +
     '</dl></div><div id="dFoto" style="margin-top:10px"></div>' +
-    (PTG() ? '' : '<button class="btn block" id="dBtnKw">🖨 Cetak Kwitansi</button>') +
+    '<button class="btn block" id="dBtnKw">🖨 Cetak Bukti Pembayaran</button>' +
     (t.adaFoto ? '<button class="btn block" id="dBtnFoto">Lihat Foto Bukti</button>' : '') +
     (admin && belumCek ? '<button class="btn primary block" id="dBtnVer">✔ Validasi Transaksi</button>' : ''));
   var shDet = $('#ov .sheet'); if (shDet) shDet.style.maxWidth = '780px';
@@ -2316,7 +2316,7 @@ function formTrx(pref, periodePref) {
         '<dl class="kv" style="margin-top:8px"><dt>No Bukti</dt><dd>' + esc(res.noBukti) + '</dd></dl>' +
         (multi ? '<div class="card" style="margin-top:8px"><b>Dicatat untuk ' + res.daftar.length + ' bulan</b><dl class="kv">' + res.daftar.map(function (x) {
           return '<dt>' + esc(BLN_PJG[Number(x.periode.slice(5)) - 1] + ' ' + x.periode.slice(0, 4)) + '</dt><dd>' + rp(x.jumlah) + ' <span class="badge ' + (x.status === 'Lunas' ? '' : 'red') + '">' + esc(x.status) + '</span></dd>'; }).join('') + '</dl></div>' : '') +
-        (PTG() ? '' : '<button class="btn block" id="rKw">🖨 Cetak Kwitansi</button>') + '<button class="btn primary block" id="rOk">Selesai</button>');
+        '<button class="btn block" id="rKw">🖨 Cetak Bukti Pembayaran</button>' + '<button class="btn primary block" id="rOk">Selesai</button>');
       if ($('#rKw')) $('#rKw').onclick = function () { cetakKwitansi(res.trx); };
       $('#rOk').onclick = function () { closeModal(); go($('#pTrx').hidden ? 'home' : 'trx'); };
       if (!$('#pTrx').hidden) pageTrx(); else if (!$('#pHome').hidden) pageHome();
@@ -2535,7 +2535,20 @@ function detailPiutang(r) {
     kv('Alamat', esc(r.alamat || '-')) + kv('Kelurahan/Desa', esc(kelPendek(r.kel) || '-')) + kv('Kecamatan', esc(r.kec || '-')) +
     kv('Periode', esc(labelPiutang())) + kv('Tarif/bln', nf(r.tarif)) + kv('Ditetapkan', nf(r.ditetapkan)) + kv('Terbayar', nf(r.terbayar)) +
     kv('Piutang', '<b style="color:var(--red)">' + nf(r.piutang) + '</b>') + kv('Keterangan', esc(ketPiutang(r))) +
-    '</dl></div><button class="btn primary block" id="dpBayar" style="margin-top:10px">+ Bayar</button>');
+    '</dl></div>' + (r.terbayar > 0 ? '<button class="btn block" id="dpCetak" style="margin-top:10px">🖨 Cetak Bukti Pembayaran</button>' : '') +
+    '<button class="btn primary block" id="dpBayar" style="margin-top:10px">+ Bayar</button>');
+  if ($('#dpCetak')) $('#dpCetak').onclick = async function () {
+    var f = d.bulan ? { bulan: d.tahun + '-' + String(d.bulan).padStart(2, '0'), q: r.id } : { dari: d.tahun + '-01-01', sampai: d.tahun + '-12-31', q: r.id };
+    var l = await jalan(function () { return api('api_trxList', S.token, f); });
+    if (!l) return;
+    l = l.filter(function (x) { return x.idObjek === r.id; }).sort(function (a, b) { return a.periode < b.periode ? -1 : a.periode > b.periode ? 1 : (a.id < b.id ? -1 : 1); });
+    if (!l.length) { toast('Belum ada transaksi untuk objek ini pada periode tersebut.', true); return; }
+    if (l.length === 1) { cetakKwitansi(l[0]); return; }
+    modal('Pilih Bukti Pembayaran', '<div class="card">' + l.map(function (x, i) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>' + esc(periodeLabel(x.periode)) + '</b><div class="mut">' + esc(tglID(x.tanggal)) + ' · ' + rp(x.jumlah) + ' · ' + esc(x.noBukti) + '</div></div><button class="btn sm" data-ci="' + i + '">🖨 Cetak</button></div>';
+    }).join('') + '</div>');
+    $('#ov .sheet').onclick = function (e) { var b = e.target.closest('[data-ci]'); if (b) cetakKwitansi(l[Number(b.dataset.ci)]); };
+  };
   $('#dpBayar').onclick = async function () {
     if (!(await muatObjekCepat())) return;
     var o = S.objek.filter(function (z) { return z.id === r.id; })[0]; if (!o) return;
